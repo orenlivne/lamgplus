@@ -1,0 +1,106 @@
+# LAMG+ — Lean Algebraic Multigrid for Graph Laplacians
+
+A lean, **parameter-free**, empirically linear-time algebraic multigrid solver for graph-Laplacian
+linear systems `Lφ = b` (spectral clustering, centrality, semi-supervised learning, finite-element
+analysis, electrical flow, network-flow interior-point solves). LAMG+ is a faithful re-derivation of
+Lean Algebraic Multigrid (Livne & Brandt, *SIAM J. Sci. Comput.* 2012) with two local refinements — a
+strength-of-connection veto and a selective caliber-2 interpolation — plus a head-to-head study against
+the modern approximate-Cholesky solver. See [`doc/lamg_plus.tex`](doc/lamg_plus.tex) for the paper.
+
+> This repository is the **linear** LAMG+ solver only. The nonlinear max-flow (FAMG) work is separate
+> and not included here.
+
+## Requirements
+
+- [Julia](https://julialang.org) ≥ 1.10. No other dependencies for the solver itself (only Julia
+  standard libraries: `LinearAlgebra`, `SparseArrays`, `Random`, `Statistics`, `Printf`).
+
+## Install
+
+```julia
+julia --project=. -e 'using Pkg; Pkg.instantiate()'
+```
+
+## Quickstart
+
+```julia
+using LAMG, LinearAlgebra
+
+A = grid2d_laplacian(128, 128)        # any connected graph Laplacian L = D - W (SPD, 1 ∈ null L)
+n = size(A, 1)
+b = randn(n); b .-= sum(b)/n          # compatible RHS (zero mean)
+
+h        = setup(A)                   # build the multilevel hierarchy (parameter-free)
+x, info  = solve(h, b)                # solve to ‖Lx-b‖ ≤ 1e-8‖b‖, x ⟂ 1
+
+@show info.cycles                     # multigrid cycles taken
+@show norm(A*x - b) / norm(b)         # achieved relative residual
+```
+
+`setup` accepts `LAMGOptions(tol=..., max_cycles=...)`; the defaults need no tuning. To reuse one
+hierarchy across many right-hand sides, call `solve(h, b1)`, `solve(h, b2)`, … on the same `h`.
+
+## Run the test suite
+
+```bash
+julia --project=. test/runtests.jl      # 1942 tests
+```
+
+## Examples (`examples/`)
+
+```bash
+julia --project=. examples/solve_and_time.jl     # solve + time a grid
+julia --project=. examples/run_corpus.jl         # solve a directory of .mtx graphs
+```
+`examples/compare_approxchol.jl` compares against Spielman's `approxchol_lap` and needs
+[`Laplacians.jl`](https://github.com/danspielman/Laplacians.jl) (see the comparison env below).
+
+## Reproducing the paper
+
+The paper's experiments run over real-world graphs from the
+[SuiteSparse Matrix Collection](https://sparse.tamu.edu) and [SNAP](https://snap.stanford.edu); we do
+**not** ship the matrices (tens of GB). Download the `.mtx` files into `data/` (Matrix Market format).
+
+**Figure 4.1 — linear scaling (solver only):**
+```bash
+julia --project=. scripts/linear_scaling_figure.jl --glob=data --out=results/scaling.csv
+python3 scripts/plot_linear_scaling.py results/scaling.csv doc/scaling_v3.pdf
+```
+
+**Tables 4.1–4.3 — comparison vs approxChol / BoomerAMG.** These need a separate environment with the
+competitor packages:
+```bash
+cd scripts/competitor_env
+julia --project=. -e 'using Pkg; Pkg.develop(path="../.."); Pkg.add(["Laplacians","HYPRE","PyCall","Conda"]); Pkg.instantiate()'
+cd ../..
+# competition table (LAMG+ vs fast/robust approxChol, all m>1e6 graphs):
+julia --project=scripts/competitor_env scripts/bench_env/run_full_tol_sweep.jl --out=results/full_tol_sweep.csv
+python3 scripts/bench_env/aggregate_tol_sweep.py results/full_tol_sweep.csv
+# a-priori solver-selection predictor (mean degree -> winner, ~90% accuracy):
+python3 scripts/predict_crossover.py results/full_tol_sweep.csv
+# multi-solver per-class table (LAMG+/approxChol/AC/BoomerAMG):
+julia --project=scripts/competitor_env scripts/run_class_comparison.jl
+python3 scripts/class_comparison_table.py results/class_comparison.csv
+```
+
+**Build the paper:**
+```bash
+cd doc && pdflatex lamg_plus.tex && pdflatex lamg_plus.tex
+```
+
+## Citing
+
+```bibtex
+@misc{lamgplus,
+  author = {Oren E. Livne},
+  title  = {LAMG+: A Lean Algebraic Multigrid Solver for Graph Laplacians},
+  year   = {2026},
+  note   = {https://github.com/orenlivne/lamgplus}
+}
+```
+LAMG+ builds on: O. E. Livne and A. Brandt, *Lean Algebraic Multigrid (LAMG): Fast Graph Laplacian
+Linear Solver*, SIAM J. Sci. Comput. 34(4), B499–B522, 2012.
+
+## License
+
+Apache-2.0 — see [`LICENSE`](LICENSE).

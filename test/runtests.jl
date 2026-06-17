@@ -1,0 +1,31 @@
+using Test
+using LAMG
+
+@testset "LAMG+ (LAMG.jl)" begin
+    include("test_graph.jl")
+    include("test_relaxer.jl")
+    include("test_elimination.jl")
+    include("test_elimination_more.jl")
+    include("test_weight_aware_elimination.jl")
+    include("test_galerkin.jl")
+    include("test_level.jl")
+    include("test_multilevel.jl")
+    include("test_cycle_dry.jl")
+    include("test_cycle_visit_counts.jl")
+    include("test_shrinkage.jl")
+    include("test_shrinkage_more.jl")
+    include("test_mock_cycle.jl")
+    include("test_mock_cycle_table.jl")
+    include("test_interpolation.jl")
+    include("test_caliber2.jl")
+    include("test_iterate_recomb.jl")
+    include("test_minres_monotone.jl")
+    include("test_port_regression.jl")
+    include("test_relax_cycle.jl")
+    include("test_solve_cycle.jl")
+    include("test_coarsen.jl")
+    include("test_setup_solve.jl")
+    include("test_solve_equivalence.jl")
+    include("test_solve_convergence.jl")
+    include("test_preprocessing.jl")
+end
