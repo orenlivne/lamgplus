@@ -3,6 +3,7 @@ using LAMG
 
 @testset "LAMG+ (LAMG.jl)" begin
     include("test_graph.jl")
+    include("test_spe10.jl")          # SPE10 TPFA build is a valid graph Laplacian
     include("test_relaxer.jl")
     include("test_elimination.jl")
     include("test_elimination_more.jl")

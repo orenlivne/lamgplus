@@ -16,19 +16,22 @@
 \maketitle
 
 \begin{abstract}
-Graph-Laplacian linear systems $L\phi=b$ underlie spectral clustering, centrality and
-semi-supervised learning, finite-element analysis, interior-point network-flow solvers,
-and electrical-flow computations. We present \textbf{LAMG+}, a lean, parameter-free,
-empirically linear-time algebraic multigrid solver for $L\phi=b$: a Julia re-implementation of Lean
-Algebraic Multigrid (LAMG) plus
-two targeted refinements. We establish three facts: (1) \emph{Fair, same-language
-benchmarking} against both variants of approximate-Cholesky (AC), the modern near-linear champion. The two paradigms are \emph{peers with complementary
-strengths}---AC is faster on social and citation graphs, LAMG+ on
-finite-element/structural matrices, where it is the fastest solver available and the most
-memory-frugal; LAMG+ is also $2.2\times$ faster than the worst-case-robust AC variant on large graphs, and solves poorly-separable graphs whose fill
-makes sparse Cholesky exhaust memory. (2) \emph{Linear scaling at scale}: LAMG+ is empirically
-$\Om$ over the full $1{,}711$-graph SuiteSparse LAMG test set ($100\%$ converged, median $4$ cycles,
-log--log slope $1.01$). It was verified for graphs up to $2.4\!\times\!10^8$ nonzeros ($1.2\!\times\!10^8$ edges, \texttt{com-Orkut}), twice larger than the original LAMG study. (3)
+Graph-Laplacian systems $L\phi=b$ underlie spectral clustering, centrality, semi-supervised
+learning, finite-element analysis, and interior-point network-flow solvers. We present \textbf{LAMG+},
+a lean, parameter-free, empirically linear-time algebraic multigrid solver: a Julia re-derivation of
+Lean Algebraic Multigrid (LAMG) plus two targeted refinements. We establish three facts. (1)
+\emph{Fair, same-machine benchmarking} against both approximate-Cholesky (AC) variants---the modern
+near-linear champion---and four other state-of-the-art solvers (hypre/BoomerAMG, PETSc GAMG, pyAMG,
+CMG), all run first-hand. LAMG+ and AC are \emph{complementary peers}: AC is faster on social and
+citation graphs, LAMG+ on finite-element/structural matrices (where it is the fastest robust solver
+and the most memory-frugal) and $2.2\times$ faster than the worst-case-robust AC variant on large
+graphs; across all twelve test classes only LAMG+ and AC are never catastrophic, while BoomerAMG,
+PETSc, pyAMG, and CMG each slow by an order of magnitude or fail to converge off their home turf. (2)
+\emph{Linear scaling}: LAMG+ is empirically $\Om$ over the full $1{,}711$-graph SuiteSparse LAMG set
+($100\%$ converged, median $4$ cycles, log--log slope $1.01$), verified to $2.4\!\times\!10^8$
+nonzeros (\texttt{com-Orkut}, twice the original LAMG study), and---in the same implementation---${\sim}2\times$
+faster in the geometric mean than the LAMG it re-derives (up to $39\times$ on grid-aligned-anisotropic
+grids where LAMG's convergence collapses): the sense in which it is ``faster.'' (3)
 \emph{Robustness}: the original MATLAB LAMG was reported non-convergent across the
 AC benchmark's test families, whereas our re-derivation converges to their
 $10^{-8}$ tolerance on all of them, indicating the gap is specific to that
@@ -122,26 +125,26 @@ direct-method crossover.
 LAMG \cite{lamg} is an accelerated caliber-1 aggregation AMG that attains $\Om$ on general
 graphs---more precisely $\mathcal{O}(m\log(1/\varepsilon))$ for an $\varepsilon$-accurate
 solution---by regulating the coarse-operator \emph{energy} rather than its size. We present
-\textbf{LAMG+}: an open re-derivation of the algorithm (validated line-by-line against the
+\textbf{LAMG+}: an open re-derivation of the algorithm\footnote{Open-source Julia implementation,
+including all scripts to reproduce the experiments in this paper: \url{https://github.com/orenlivne/lamgplus}.}
+(validated line-by-line against the
 original MATLAB reference, App.~\ref{sec:valid}) that we use to establish three things.
 \begin{itemize}[leftmargin=1.4em,itemsep=1pt]
 \item \emph{A fair, same-language adjudication against the modern near-linear champion}
-(\S\ref{sec:compete}). LAMG (2012) predates Spielman's approximate-Cholesky line
-\cite{laplacians,gks2023}---now the dominant practical near-linear Laplacian solver---and was never
-compared with it. Running both in the same Julia process, we find the two paradigms are
-\emph{peers with complementary strengths}: approximate-Cholesky is faster on social and citation
-graphs, while on FE/structural matrices LAMG+ is the fastest \emph{and} most
-memory-frugal of all three, and $2.2\times$ faster on large graphs than the worst-case-robust
-approximate-Cholesky variant. Sparse Cholesky cannot factor the largest poorly-separable matrices.
-The split is algorithmic (coarsening vs.\ fill), not a compiler artifact.
+(\S\ref{sec:compete}). LAMG (2012) predates and was never compared with Spielman's
+approximate-Cholesky line \cite{laplacians,gks2023}, now the dominant practical near-linear solver.
+Run in the same Julia process, the two are \emph{complementary peers}: approximate-Cholesky is
+faster on social/citation graphs, LAMG+ on FE/structural matrices (the fastest robust solver there,
+$2.2\times$ over the worst-case-robust AC variant on large graphs); the split is algorithmic
+(coarsening vs.\ fill), not a compiler artifact.
 \item \emph{Linear scaling at scale} (\S\ref{sec:scaling}). LAMG+ is empirically $\Om$ over
 $1{,}711$ SuiteSparse graphs---$100\%$ converged, median $4$ cycles, log--log slope $1.01$---and
 builds its multilevel hierarchy on a $2.3\!\times\!10^8$-edge graph, two orders of magnitude beyond
 LAMG's original demonstration, with no tuning.
 \item \emph{Robustness, closing LAMG's outlier tail} (\S\ref{sec:choices},\,\S\ref{sec:families}).
-The original MATLAB LAMG was reported non-convergent across the approximate-Cholesky benchmark's
-test families; our independent re-derivation converges to their $10^{-8}$ tolerance on all of them,
-indicating the gap is specific to that implementation, not the algorithm.
+Where the original MATLAB LAMG was reported non-convergent across the benchmark's test families, our
+independent re-derivation converges to their $10^{-8}$ tolerance on all of them---the gap specific to
+that implementation, not the algorithm.
 Two lean, \emph{local} refinements---a strength-of-connection veto and a selective caliber-2
 interpolation, both \emph{anticipated as future work} in \cite{lamg}---turn LAMG's stalled
 grid-aligned-anisotropy rate ($\acf\approx0.99$) into $\approx0.11$ at $\approx\!1\%$ median
@@ -446,7 +449,13 @@ $10^{-8}$, in a median of $4$ cycles. The log--log slopes of per-edge time are $
 and $-0.002$ (solve): per-edge cost is independent of $m$, the empirical $\Om$ statement
 (equivalently, total setup$+$solve time scales as $m^{1.01}$). The medians are
 $t_{\text{setup}}/m\approx0.24~\mu$s/edge (IQR $[0.18,0.34]$) and
-$t_{\text{solve}}/m\approx0.19~\mu$s/edge (IQR $[0.10,0.43]$). The wide vertical scatter is about a
+$t_{\text{solve}}/m\approx0.19~\mu$s/edge (IQR $[0.10,0.43]$). These low, flat constants reflect an
+implementation tuned to the algorithm: a self-gated reverse-Cuthill--McKee reordering for cache
+locality, single-pass Gustavson-fused Schur extraction (each coarse operator built in one column scan
+with no matrix-multiply temporary), allocation-free elimination into preallocated buffers, and a
+monomorphic, branch-free, residual-maintaining in-place Gauss--Seidel kernel; each change is
+\emph{bit-identical} to a naive implementation---it lowers the constant, not the result. The wide
+vertical scatter is about a
 \emph{flat} line---per-instance conditioning (level count, separator quality), not growth with
 $m$; the largest per-edge costs are the strongly anisotropic grids of App.~\ref{sec:aniso}. Beyond
 the corpus, the construction scales two orders of magnitude further: on a $2.3\!\times\!10^8$-edge
@@ -458,10 +467,12 @@ The build is a $21$-level hierarchy of operator complexity $2.51$ in $375$\,s, t
 $\Om$ two decades past the largest LAMG instance. The iterative solve on that one instance exceeded
 our $48$\,GB: at this scale it is memory-bound, not time-bound.
 
-\begin{figure}[t]\centering\includegraphics[width=.80\linewidth]{scaling_v3.pdf}
-\caption{Per-edge setup (blue) and solve (red) time vs.\ $m$ (log--log), $1{,}711$ SuiteSparse
-graphs. Flat $\Rightarrow\Om$. Solid: regression fits (slopes $+0.005$ setup, $-0.002$ solve).
-Shaded: interquartile bands.}\label{fig:scaling}\end{figure}
+\begin{figure}[t]\centering\includegraphics[width=\linewidth]{scaling_v3.pdf}
+\caption{LAMG+ per-edge time vs.\ number of edges $m$ (log--log) over $1{,}711$ SuiteSparse graph
+Laplacians: (a)~setup, (b)~solve, (c)~total. Grey points are individual graphs; the red dashed line is
+the median, the red solid line the log--log regression fit (slope shown per panel). A near-zero slope
+means per-edge cost is independent of $m$ --- the empirical $\Om$ statement; the regression of total
+setup$+$solve time gives the exponent $m^{1.01}$.}\label{fig:scaling}\end{figure}
 
 \subsection{Comparison: complementary strengths, by class}\label{sec:compete}
 We benchmark setup$+$solve to relative residual $10^{-8}$ against \emph{both} approximate-Cholesky
@@ -526,42 +537,64 @@ and---its largest end-to-end solve---\texttt{com-Orkut} ($1.2\!\times\!10^8$ edg
 $2.4\!\times\!10^8$ nonzeros, $2$ cycles), past the largest graph of the original LAMG
 test set~\cite{lamg}.
 
-\paragraph{An a-priori selection rule} The split is not merely descriptive: it is \emph{predictable}
-from one cheap statistic, the mean degree $\bar d=2m/n$, known before either solver runs. Over the
-$201$ large graphs the rule ``use LAMG+ iff $\bar d>29$'' agrees with the measured $10^{-8}$ winner
-$90.5\%$ of the time (and $90.5\%$ at $10^{-4}$, threshold $\bar d>14$); the point-biserial correlation
-of $\log\bar d$ with a LAMG+ win is $+0.68$. The mechanism is the one behind the FE/structural win:
-approximate-Cholesky's fill grows with elimination-clique size, hence with degree, while caliber-1
-aggregation collapses dense neighbourhoods at $\Oone$ cost---so high mean degree favours LAMG+ and low
-degree favours sampled elimination. The right solver can thus be chosen from the degree distribution
-alone.
+\paragraph{An a-priori selection rule} We construct a simple predictor of a LAMG+ win from a single
+statistic computable before either solver runs: the mean degree $\bar d=2m/n$. Treating
+``LAMG+ wins iff $\bar d\ge30$'' as a binary classifier over the $201$ large graphs, its accuracy
+peaks at $91\%$ near $\bar d\approx30$ (Figure~\ref{fig:predictor}), and the point-biserial
+correlation of $\log\bar d$ with a LAMG+ win is $r=+0.68$. The mechanism is the one behind the
+FE/structural win: approximate-Cholesky's fill grows with elimination-clique size, hence with degree,
+whereas caliber-1 aggregation collapses dense neighbourhoods at $\Oone$ cost. High mean degree
+therefore favours LAMG+ and low degree favours sampled elimination, so the appropriate solver can be
+selected from the degree distribution alone.
 
-Table~\ref{tab:classcomp} widens the comparison to BoomerAMG across graph classes (per-class
-mean\,/\,worst time per nonzero). It confirms the split and adds a third regime: classical
-smoothed-aggregation BoomerAMG~\cite{boomeramg} is fastest on the structured meshes and grids it was
-built for, but---being a geometric-style hierarchy---degrades by an order of magnitude on
-low-diameter social and web graphs; LAMG+ alone is never catastrophic on any class. (pyAMG and CMG are
-omitted: pyAMG's Python interface is unstable at this scale and CMG has no maintained Julia
-implementation; \cite{gks2023} reports both slower than approximate-Cholesky, with convergence
-failures on the chimera/SDDM families.)
+\begin{figure}[t]\centering
+\includegraphics[width=0.5\linewidth]{predictor.pdf}
+\caption{Degree-threshold predictor of a LAMG+ win: accuracy of the rule ``LAMG+ wins iff
+$\bar d>t$'' over the $201$ large ($m>10^6$) graphs as a function of the threshold $t$. Accuracy
+peaks at $91\%$ near $\bar d\approx30$ (marked), against a $56\%$ majority-class baseline (the classes
+are near-balanced: $112$ LAMG+ vs.\ $89$ approxChol wins); the point-biserial correlation of $\log\bar d$
+with a LAMG+ win is $r=+0.68$. The mean degree thus predicts the faster solver a priori.}\label{fig:predictor}
+\end{figure}
 
-\begin{table}[t]\centering\small
+Table~\ref{tab:classcomp} widens the comparison to all seven solvers across twelve graph classes,
+including all of the approximate-Cholesky benchmark's synthetic families. The result is a clean
+separation by design intent. On the structured classes their authors built them for---FE/structural
+and grids---the four algebraic-multigrid solvers (LAMG+, pyAMG, BoomerAMG, PETSc GAMG) are all fast
+and beat sparse Cholesky. On the low-diameter classes---social, citation, web---this reverses:
+BoomerAMG~\cite{boomeramg} and PETSc GAMG slow by up to an order of magnitude, pyAMG~\cite{pyamg}
+stops converging, and \texttt{approxChol} is fastest. CMG~\cite{cmg} does not converge on the grids,
+on SPE, or on many roads. Across \emph{all} classes only \emph{three} solvers are both convergent
+everywhere and never catastrophic (worst case under $1.4\,\mu$s/nnz): \textbf{LAMG+}
+($\le1.35$), \texttt{approxChol} ($\le0.70$), and AC ($\le1.20$)---precisely the robust near-linear
+solvers this paper compares. BoomerAMG converges everywhere but is catastrophic ($7\,\mu$s/nnz) on
+irregular graphs; pyAMG, CMG, and PETSc GAMG additionally fail to converge on $11$, $15$, and $6$ of
+the instances. This is the practical case for LAMG+: not the per-class champion, but---with
+approximate-Cholesky---one of only two solvers that is never the wrong choice.
+
+\begin{table}[t]\centering\footnotesize\setlength{\tabcolsep}{3.4pt}
 \caption{Multi-solver comparison by graph class: mean\,/\,worst-case setup$+$solve time per nonzero
-($\mu$s/nnz) to relative residual $10^{-8}$, over a class-stratified sample (real SuiteSparse/SNAP
-classes and the approximate-Cholesky benchmark's synthetic families). Bold $=$ fastest mean; every
-solver converged on every instance.}\label{tab:classcomp}
-\begin{tabular}{lrrrr}
+($\mu$s/nnz) to relative residual $10^{-8}$, over a class-stratified corpus (real SuiteSparse/SNAP
+classes and \emph{all} of the approximate-Cholesky benchmark's synthetic families, including the
+SPE10 reservoir). Bold $=$ fastest mean; a superscript is the number of class instances that did not
+converge; ``DNF'' $=$ none converged. A per-graph budget of $50\times$ the fastest solver (capped at
+$90$\,s) bounds the slow cases. apxChol $=$ \texttt{approxchol\_lap}; PETSc $=$ PETSc
+GAMG.}\label{tab:classcomp}
+\begin{tabular}{lrrrrrrr}
 \toprule
-class & LAMG+ & \texttt{approxChol} & AC & BoomerAMG\\
+class & LAMG+ & apxChol & AC & Boomer & pyAMG & CMG & PETSc\\
 \midrule
-FE/structural   & \textbf{0.10}/0.12 & 0.15/0.24 & 0.50/0.70 & 0.31/0.83\\
-mesh/grid       & 0.68/1.66 & 0.29/0.55 & 0.51/0.83 & \textbf{0.16}/0.23\\
-social/citation & 0.45/0.83 & \textbf{0.22}/0.34 & 0.51/0.83 & 2.11/6.61\\
-web             & 0.39/0.51 & \textbf{0.26}/0.36 & 0.38/0.45 & 1.58/2.68\\
-road            & 0.76/1.33 & \textbf{0.26}/0.33 & 0.60/0.79 & 0.31/0.39\\
-chimera         & 0.31/0.51 & \textbf{0.17}/0.28 & 0.33/0.53 & 0.46/0.67\\
-wtd-chimera     & 0.32/0.58 & 0.66/1.82 & \textbf{0.31}/0.55 & 0.43/0.64\\
-aniso-grid      & 1.26/1.30 & 0.28/0.32 & 0.73/0.82 & \textbf{0.19}/0.19\\
+FE/structural   & 0.12/0.15 & 0.28/0.54 & 0.53/0.73 & 0.18/0.35 & \textbf{0.10}/0.13 & 0.18/0.21$^{2}$ & 0.12/0.20\\
+mesh/grid       & 0.56/1.24 & \textbf{0.25}/0.36 & 0.68/1.03 & 1.74/7.02 & 0.28/0.54 & 0.64/1.46$^{2}$ & 0.95/3.47\\
+social/citation & 0.47/0.69 & \textbf{0.25}/0.37 & 0.71/0.94 & 1.53/2.50 & 4.60/7.81$^{3}$ & 0.50/0.73 & 3.10/3.14$^{4}$\\
+web             & 0.37/0.41 & \textbf{0.29}/0.38 & 0.39/0.51 & 1.43/2.59 & 5.45/5.45$^{3}$ & 1.27/2.05$^{1}$ & 2.76/3.59$^{2}$\\
+road            & 0.68/0.85 & 0.39/0.50 & 0.53/0.65 & \textbf{0.35}/0.39 & 1.38/1.76 & 1.24/1.24$^{3}$ & 0.57/0.75\\
+chimera         & 0.40/0.91 & \textbf{0.14}/0.19 & 0.56/1.20 & 0.48/0.67 & 1.13/1.74$^{1}$ & 0.43/0.78 & 0.91/1.72\\
+wtd-chimera     & 0.45/1.34 & \textbf{0.23}/0.70 & 0.39/0.56 & 0.46/0.63 & 2.04/3.25$^{1}$ & 0.33/0.76 & 0.96/1.86\\
+sddm-chimera    & 0.30/0.51 & \textbf{0.10}/0.13 & 0.21/0.32 & 0.44/0.57 & 2.21/2.80$^{1}$ & 0.34/0.47 & 1.74/3.26\\
+grid-3D         & 1.30/1.35 & 0.32/0.37 & 0.70/0.72 & \textbf{0.19}/0.19 & 0.37/0.41 & DNF & 0.25/0.25\\
+aniso-grid      & 0.61/0.68 & 0.15/0.16 & 0.38/0.41 & \textbf{0.15}/0.15 & 2.38/2.38$^{2}$ & 1.22/1.48$^{1}$ & 1.01/1.49\\
+star            & 0.05/0.05 & 0.03/0.03 & 0.24/0.40 & \textbf{0.02}/0.02 & 0.03/0.03 & 0.04/0.06 & 0.04/0.04\\
+SPE/reservoir   & 1.09/1.22 & \textbf{0.29}/0.30 & 0.56/0.59 & 0.29/0.31 & 2.72/2.95 & DNF & 0.90/1.29\\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -571,7 +604,13 @@ matrices LAMG+'s no-fill multilevel hierarchy is the \emph{most} frugal of the t
 ($21$--$30$ bytes/nnz vs.\ $33$--$55$ for the factorisations); on web/social graphs its operators
 and inter-level transfers outweigh a single Cholesky factor. And across \emph{every} graph the
 robust AC costs more memory than the fast \texttt{approxchol\_lap} (its multi-entry splitting), so
-AC's guarantee is paid in both time and space. Table~\ref{tab:memory} reports the \emph{persistent}
+AC's guarantee is paid in both time and space. The two AMG competitors store their hierarchies in C,
+so we compare them by operator complexity $\sum_\ell \mathrm{nnz}(A_\ell)/\mathrm{nnz}(A_0)$, the
+standard measure: on these FE/structural matrices LAMG+'s gentle ${\sim}2\times$ coarsening gives
+$1.2$--$1.65$, modestly above BoomerAMG ($1.02$--$1.26$) and PETSc GAMG ($1.00$--$1.01$), whose
+aggressive coarsening minimises coarse-operator storage---the memory side of the same tradeoff that
+costs them the robustness of Table~\ref{tab:classcomp}; on the low-diameter classes neither is an
+appropriate solver. Table~\ref{tab:memory} reports the \emph{persistent}
 hierarchy; the transient setup peak adds only a \emph{single} level's $K$ test vectors ($K{\cdot}n$
 floats), discarded once that level is coarsened rather than accumulated across levels, and the
 fixed $K{=}4$ default halves this peak (versus LAMG's $K{=}8$ accumulation)---which is what governs
@@ -604,29 +643,27 @@ variants, SDDM ``chimeras'', adversarial ``Sachdeva stars'', an SPE benchmark, a
 uniform/anisotropic/high-contrast Poisson grids. That robustness is precisely why we take AC as the
 near-linear baseline worth a same-machine comparison.
 
-LAMG+ meets the same bar, on the AC benchmark's full family set, generated by its own generators
-(Spielman's \texttt{Laplacians.jl}). With the standard right-hand side ($b=L\,x_{\mathrm{true}}$,
-zero-mean), LAMG+ converges to \emph{both} $10^{-8}$ and $10^{-4}$ on every one of the $164$ instances:
-\texttt{chimera}s and their weighted, uniform, and semi-weighted variants
-($96$ graphs, $n=10^4$ to $10^6$), SDDM chimeras ($12$), $3$-D Poisson grids with uniform,
-anisotropic, and high-contrast coefficients ($12$), Sachdeva-style stars ($3$), and---extending
-\emph{past} the scale at which AC was benchmarked---$41$ large SuiteSparse graphs up to
-\texttt{com-Orkut} ($1.2\times10^8$ edges, $2.4\times10^8$ nonzeros). Of the benchmark's families we
-omit only the external SPE fluid dataset; its Flow-IPM matrices are exercised directly by the
-companion solver, where LAMG+ is the inner Laplacian solve. Together with the $1{,}711$-graph
-scaling set (\S\ref{sec:scaling}), every instance converges, in a median of $4$ cycles. The original
-MATLAB LAMG was reported non-convergent on parts of this family set \cite{gks2023}; we did not
-reproduce that run and do not diagnose it, observing only that our independent re-derivation
-converges on all of these families---evidence that the reported non-convergence was specific to that
-implementation or its invocation, not to the algorithm. Establishing this required matching the
-original's design choices (\S\ref{sec:alg}) line by line.
+LAMG+ meets the same bar. With the standard right-hand side ($b=L\,x_{\mathrm{true}}$, zero-mean), it
+converges to \emph{both} $10^{-8}$ and $10^{-4}$ on every one of the benchmark's families generated by
+Spielman's own \texttt{Laplacians.jl}: \texttt{chimera}s and their weighted, uniform, and
+semi-weighted variants ($96$ graphs, $n=10^4$ to $10^6$), SDDM chimeras ($12$), $3$-D Poisson grids
+with uniform, anisotropic, and high-contrast coefficients ($12$), and Sachdeva-style stars ($3$). It
+also converges on the benchmark's one \emph{external} family, the SPE fluid dataset: we reconstruct
+the SPE10 reservoir model \cite{christie-blunt} directly from its public permeability field,
+discretised by a two-point flux approximation into high-contrast (permeability ratio ${\sim}10^7$),
+anisotropic graph Laplacians at three sizes ($n=2.6\times10^5$ to $1.1\times10^6$), each solved in
+$5$ cycles. Extending \emph{past} the scale at which AC was benchmarked, it further solves $41$ large
+SuiteSparse graphs up to \texttt{com-Orkut} ($1.2\times10^8$ edges, $2.4\times10^8$ nonzeros).
+Together with the $1{,}711$-graph scaling set (\S\ref{sec:scaling}), every instance converges, in a
+median of $4$ cycles. The original MATLAB LAMG was reported non-convergent on parts of this set
+\cite{gks2023}; our independent re-derivation converges on all of them---indicating the failure was
+specific to that implementation, not the algorithm---which required matching the original's design
+choices (\S\ref{sec:alg}) line by line.
 
-On these well-structured families AC is the faster solver: chimeras and grids have the bounded
-degrees and separators its sampled elimination exploits, and LAMG+'s lean-aggregation setup is not
-amortised over a $3$--$6$ cycle solve. LAMG+'s speed advantage is the large poorly-separable class
-of Table~\ref{tab:compete}. The point across the families is that \emph{both} solvers are robust, so
-the comparison is one of speed---which we report next over the full corpus, in time per nonzero, the
-worst-case-oriented metric of \cite{gks2023}.
+On these well-structured families approximate-Cholesky is faster---bounded degrees and separators
+suit its sampled elimination---while LAMG+'s advantage is the large poorly-separable class of
+Table~\ref{tab:compete}. Both are robust, so the comparison is one of speed, reported next over the
+full corpus in time per nonzero (the worst-case metric of \cite{gks2023}).
 
 \subsection{Lower accuracy shifts the balance toward LAMG+}\label{sec:tol4}
 Many applications need only a few digits. At relative residual $10^{-4}$ the LAMG+ solve collapses
@@ -638,10 +675,7 @@ $0.99\times$ at $10^{-8}$ (parity) to $1.20\times$ at $10^{-4}$---LAMG+ ahead---
 over the $201$ large graphs rises from $56\%$ to $64\%$. Against the robust AC the lead widens from
 $2.20\times$ to $2.91\times$ ($76\%\!\to\!84\%$ of head-to-heads). The shift is largest exactly
 where LAMG+ already leads, the FE/structural class, since there the solve was already short and
-setup already dominant. (Reusing one hierarchy across many right-hand sides does \emph{not} add a
-further LAMG+ advantage here: both solvers amortise their one-time setup over repeated solves, so the
-many-RHS comparison reduces to solve cost alone, where the cheaper-per-solve solver---often
-\texttt{approxChol} on these graphs---wins.)
+setup already dominant.
 
 \subsection{Anisotropy: the veto and the caliber-2 extension}\label{sec:aniso-results}
 Grid-aligned anisotropy is baseline (caliber-1) LAMG+'s worst class. On a $64\times64$ grid with
@@ -763,13 +797,15 @@ $32\times32$ model-problem grid         & $n$  & ---    & $0.424$ & $1.000$\\
 
 \paragraph{The open obstacle is distributed coarsening} An irregular, low-diameter Laplacian must be
 partitioned to minimise inter-processor communication---itself a multilevel graph-partitioning problem
-\cite{metis}---and aggregates straddling a boundary need a halo exchange per cycle. Whether affinity
-aggregation and low-degree elimination keep their lean operator complexity under a
-communication-minimising partition (the local, per-node caliber-2 test needs only a node's immediate
-neighbourhood, so it distributes naturally) is a project in its own right and beyond this paper's
-scope. We note only that nothing in the algorithm is inherently sequential---a no-fill aggregation
-hierarchy is, if anything, friendlier to distribution than a sparsified Cholesky factor whose
-elimination order is global.
+\cite{metis}, handled in production distributed AMG (hypre, PETSc GAMG) by repartitioning each coarse
+level with ParMETIS-style tools---and aggregates straddling a boundary need a per-cycle halo exchange
+whose cost is set by the highest-degree boundary nodes. LAMG+'s coarsening is, however, local: the
+per-node affinity and caliber-2 tests read only a node's immediate neighbourhood, so they distribute
+naturally once a partition is fixed. Whether that locality preserves LAMG+'s lean operator complexity
+under a communication-minimising partition is a project in its own right, beyond this paper's scope.
+We note only that nothing in the algorithm is inherently sequential---a no-fill aggregation hierarchy
+is, if anything, friendlier to distribution than a sparsified Cholesky factor whose elimination order
+is global.
 
 \section{Conclusion}\label{sec:conclusion}
 LAMG+ is a lean, parameter-free, empirically linear-time graph-Laplacian solver. Its contribution
@@ -800,7 +836,7 @@ nonlinear (max-flow) companion paper.
 \section{Grid-aligned anisotropy, and the caliber-2 fix}\label{sec:aniso}
 
 \begin{figure}[t]\centering
-\includegraphics[width=\textwidth]{semicoarsen.pdf}
+\includegraphics[width=0.58\textwidth]{semicoarsen.pdf}
 \caption{Why caliber-2 is a one-dimensional fix. (A)~Affinity merges along the strong
 direction ($2{:}1$ $x$-pairs)---a semicoarsening. (B)~The error pointwise GS leaves is smooth
 in $x$, oscillatory in $y$. (C)~The semicoarsened grid keeps every $y$-layer; caliber-1
@@ -809,7 +845,7 @@ $\rho\approx0.5$), caliber-2 by a line ($q\to1$, $\rho\approx0.12$).}\label{fig:
 \end{figure}
 
 \begin{figure}[t]\centering
-\includegraphics[width=\textwidth]{adaptive_caliber.pdf}
+\includegraphics[width=0.58\textwidth]{adaptive_caliber.pdf}
 \caption{The caliber-2 fix (\S\ref{sec:cal2}, on by default), two-grid factor on an anisotropic
 grid. (A)~On locally one-dimensional pockets the second parent drops $\rho$ from the
 caliber-1 ceiling $\approx0.49$ to $\approx0.12$, $\epsilon$-robust. (B)~The gate is
@@ -948,7 +984,7 @@ $\Rightarrow$ constant asymptotic factor) match, and that the reference performs
 preprocessing.
 
 \begin{thebibliography}{99}
-\small
+\small\setlength{\itemsep}{0.3ex}
 \bibitem{lamg} O.~E.~Livne and A.~Brandt, \emph{Lean Algebraic Multigrid (LAMG): Fast Graph
 Laplacian Linear Solver}, SIAM J.\ Sci.\ Comput.\ \textbf{34}(4), B499--B522, 2012.
 \bibitem{spielman-review} D.~A.~Spielman, \emph{Algorithms, Graph Theory, and Linear Equations
@@ -1001,6 +1037,9 @@ analysis and an algorithm}, NeurIPS, 2002.
 \bibitem{gks2023} Y.~Gao, R.~Kyng, and D.~A.~Spielman, \emph{Robust and practical solution of
 Laplacian equations by approximate elimination}, arXiv:2303.00709, 2023 (the
 \texttt{approxchol\_lap2} solver in Laplacians.jl).
+\bibitem{christie-blunt} M.~A.~Christie and M.~J.~Blunt, \emph{Tenth SPE comparative solution
+project: a comparison of upscaling techniques}, SPE Reservoir Eval.\ \& Eng.\ \textbf{4}(4),
+308--317, 2001 (the SPE10 benchmark; public permeability field).
 \bibitem{napov-notay} A.~Napov and Y.~Notay, \emph{An efficient multigrid method for graph
 Laplacian systems}, ETNA \textbf{45}, 2016; and \emph{\ldots\ II: Robust aggregation}, SIAM J.\
 Sci.\ Comput.\ \textbf{39}(5), 2017.

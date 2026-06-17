@@ -9,10 +9,13 @@ from collections import defaultdict
 
 path = sys.argv[1] if len(sys.argv) > 1 else "doc/paper_program/results/class_comparison.csv"
 rows = list(csv.DictReader(open(path)))
-SOLVERS = ["LAMG+","approxChol","AC","BoomerAMG","pyAMG","CMG"]
-# class display order
+SOLVERS = ["LAMG+","approxChol","AC","BoomerAMG","pyAMG","CMG","PETSc-GAMG"]
+# LaTeX display names (match the paper's style: approxChol in \texttt, names plain).
+DISP = {"LAMG+":"LAMG+","approxChol":"\\texttt{approxChol}","AC":"AC","BoomerAMG":"BoomerAMG",
+        "pyAMG":"pyAMG","CMG":"CMG","PETSc-GAMG":"PETSc"}
+# class display order (real SuiteSparse/SNAP classes, then GKS synthetic families)
 ORDER = ["FE/structural","mesh/grid","social/citation","web","road",
-         "chimera","wtd-chimera","aniso-grid"]
+         "chimera","wtd-chimera","sddm-chimera","grid-3D","aniso-grid","star","SPE/reservoir"]
 
 # (class,solver) -> list of per_nnz for ok runs; and counts
 okvals = defaultdict(list); total = defaultdict(int); dnf = defaultdict(int)
@@ -47,7 +50,7 @@ for c in classes:
 print("\n% --- LaTeX ---")
 print("\\begin{tabular}{l" + "r"*len(SOLVERS) + "}")
 print("\\toprule")
-print("class & " + " & ".join("\\texttt{"+s.replace('+','{+}')+"}" for s in SOLVERS) + "\\\\")
+print("class & " + " & ".join(DISP[s] for s in SOLVERS) + "\\\\")
 print("\\midrule")
 for c in classes:
     print(c.replace('/','/') + " & " + " & ".join(cell(c,s).replace('✗','$\\times$') for s in SOLVERS) + "\\\\")
