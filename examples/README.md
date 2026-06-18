@@ -65,13 +65,15 @@ graph downloaded from the SuiteSparse test set, illustrating the degree crossove
 wins the low-degree grid; LAMG+ wins the high-degree finite-element graph):
 
 ```bash
-cd examples/notebooks
+cd examples
 julia --project=. -e 'using Pkg; Pkg.instantiate()'                       # one-time
 julia --project=. -e 'using IJulia; jupyterlab()'                         # or open in any Jupyter
 ```
 
-Then open [`notebooks/lamgplus_demo.ipynb`](notebooks/lamgplus_demo.ipynb). It has its own
-environment (LAMG+, Laplacians.jl, and a SuiteSparse downloader) and ships with executed output.
+Then open [`lamgplus_demo.ipynb`](lamgplus_demo.ipynb). It has its own environment (LAMG+,
+Laplacians.jl, and a SuiteSparse downloader, via `examples/Project.toml`) and ships with executed
+output. The other `.jl` examples above use the main solver environment (`--project=.` from the repo
+root), not this one.
 
 ## Run the test suite (verify correctness)
 

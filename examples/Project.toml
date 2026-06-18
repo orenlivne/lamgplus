@@ -1,4 +1,4 @@
-# Environment for the LAMG+ demo notebook (examples/notebooks/lamgplus_demo.ipynb).
+# Environment for the LAMG+ demo notebook (examples/lamgplus_demo.ipynb).
 #
 # One-time setup (from this directory):
 #   julia --project=. -e 'using Pkg; Pkg.instantiate()'
@@ -19,4 +19,4 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [sources]
-LAMG = {path = "../.."}
+LAMG = {path = ".."}
