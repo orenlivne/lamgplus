@@ -129,6 +129,24 @@ zmrand(n, s) = (Random.seed!(s); v = randn(n); v .- sum(v)/n)
         @test norm(A * φ - b) / norm(b) <= 1e-7
     end
 
+    @testset "caliber-2 prolongation: constant-preserving, lean, valid" begin
+        A = aniso2d_lap(24, 24, 1e-4)
+        agg, nc = H.hybrid_partition(A)
+        Ac, P = H.caliber2_prolongation(A, agg, nc)
+        @test size(P) == (size(A,1), nc)
+        @test all(sum(P; dims=2) .≈ 1)                    # rows sum to 1 (constants exact)
+        @test all(v -> v <= 2, vec(sum(P .!= 0; dims=2))) # ≤ 2 parents per fine node (lean)
+        @test is_lap(Ac)
+    end
+
+    @testset "caliber-2 lowers iterations vs caliber-1 on anisotropy" begin
+        A = aniso2d_lap(128, 128, 1e-4); b = zmrand(size(A,1), 1)
+        _, i1 = H.hybrid(A, b; tol = 1e-8, caliber2 = false)
+        _, i2 = H.hybrid(A, b; tol = 1e-8, caliber2 = true)
+        @test i2.relres <= 1e-8
+        @test i2.iters <= i1.iters                        # caliber-2 no worse, expected fewer
+    end
+
     @testset "no regression on isotropic / structured grids" begin
         for (nx, ny) in ((48, 48), (64, 64))
             A = grid2d_lap(nx, ny); b = zmrand(size(A,1), 2)

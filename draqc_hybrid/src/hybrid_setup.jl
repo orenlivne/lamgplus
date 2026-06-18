@@ -65,13 +65,14 @@ Build the multilevel hierarchy with SoC-vetoed DRA-QC coarsening and DRAQC's
 Galerkin operator. The returned hierarchy plugs directly into DRAQC's solver.
 """
 function hybrid_setup(A::SparseMatrixCSC; κbar::Real=10.0, τ::Real=0.05,
-                      maxcoarse::Int=100, maxlevels::Int=40)
+                      maxcoarse::Int=100, maxlevels::Int=40, caliber2::Bool=false)
     As = SparseMatrixCSC{Float64,Int}[A]
     Ps = SparseMatrixCSC{Float64,Int}[]
     while size(As[end], 1) > maxcoarse && length(As) < maxlevels
         agg, nc = hybrid_partition(As[end]; κbar = κbar, τ = τ)
         nc >= size(As[end], 1) && break
-        Ac, P = DRAQC.galerkin(As[end], agg, nc)
+        Ac, P = caliber2 ? caliber2_prolongation(As[end], agg, nc; τ = τ) :
+                           DRAQC.galerkin(As[end], agg, nc)
         push!(Ps, P); push!(As, Ac)
     end
     return DRAQC.DRAQCHierarchy(As, Ps)
@@ -91,7 +92,7 @@ hybrid_solve(h::DRAQC.DRAQCHierarchy, b::AbstractVector; kw...) =
 Convenience: build the hybrid hierarchy and solve.
 """
 function hybrid(A::SparseMatrixCSC, b::AbstractVector; tol::Real=1e-8, κbar::Real=10.0,
-                τ::Real=0.05, maxcoarse::Int=100)
-    h = hybrid_setup(A; κbar = κbar, τ = τ, maxcoarse = maxcoarse)
+                τ::Real=0.05, maxcoarse::Int=100, caliber2::Bool=false)
+    h = hybrid_setup(A; κbar = κbar, τ = τ, maxcoarse = maxcoarse, caliber2 = caliber2)
     return hybrid_solve(h, b; tol = tol)
 end

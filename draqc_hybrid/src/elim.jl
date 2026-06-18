@@ -60,11 +60,12 @@ Eliminate degree-≤`dmax` nodes, solve the Schur complement with the SoC hybrid
 back-substitute. `dmax=1` reproduces DRA-QC's elimination; `dmax=4` is the LAMG variant.
 """
 function hybrid_elim(L::SparseMatrixCSC, b::AbstractVector; dmax::Int=4, tol::Real=1e-8,
-                     κbar::Real=10.0, τ::Real=0.05, maxcoarse::Int=100, maxiter::Int=2000)
+                     κbar::Real=10.0, τ::Real=0.05, maxcoarse::Int=100, maxiter::Int=2000,
+                     caliber2::Bool=false)
     ed, Lc = eliminate_lowdeg(L; dmax = dmax)
     bF = b[ed.F]; bC = b[ed.C]
     bc = bC - ed.LFC' * (bF ./ ed.dff)         # reduced RHS (zero-mean, consistent)
-    h = hybrid_setup(Lc; κbar = κbar, τ = τ, maxcoarse = maxcoarse)
+    h = hybrid_setup(Lc; κbar = κbar, τ = τ, maxcoarse = maxcoarse, caliber2 = caliber2)
     φC, info = hybrid_solve(h, bc; tol = tol, maxiter = maxiter)
     φF = backsub(ed, bF, φC)
     φ = zeros(ed.n); φ[ed.F] = φF; φ[ed.C] = φC

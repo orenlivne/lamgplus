@@ -21,6 +21,7 @@ include(joinpath(@__DIR__, "..", "..", "draqc", "src", "DRAQC.jl"))
 using .DRAQC
 
 include("soc_aggregate.jl")
+include("caliber2.jl")
 include("hybrid_setup.jl")
 include("elim.jl")
 
