@@ -36,7 +36,7 @@ Algorithm 3 (DRA-QC-CE): greedy DRA with per-aggregate quality control, then the
 complexity-enhancement reform of small aggregates. Returns `agg::Vector{Int}`
 (aggregate id 1..nc for every vertex) and `nc`.
 """
-function draqc_partition(A::SparseMatrixCSC; κbar::Real=10.0)
+function draqc_partition(A::SparseMatrixCSC; κbar::Real=10.0, maxdepth::Int=4)
     n = size(A, 1)
     δ = delta_vector(A)
     rv = rowvals(A)
@@ -52,7 +52,7 @@ function draqc_partition(A::SparseMatrixCSC; κbar::Real=10.0)
         for r in order
             aggregated[r] && continue
             G = form_tentative(A, r, aggregated)
-            G = refine_aggregate(A, G, r, δ; κbar = κbar)
+            G = refine_aggregate(A, G, r, δ; κbar = κbar, maxdepth = maxdepth)
             nc += 1
             for v in G
                 aggregated[v] = true; agg[v] = nc
