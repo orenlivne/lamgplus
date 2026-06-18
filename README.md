@@ -83,6 +83,30 @@ julia --project=scripts/competitor_env scripts/run_class_comparison.jl
 python3 scripts/class_comparison_table.py results/class_comparison.csv
 ```
 
+**Spot-check the comparison numbers (notebook).** For a fast, self-contained check that the reported
+LAMG+ vs. approxChol timings reproduce, [`examples/reproduce_comparison.ipynb`](examples/reproduce_comparison.ipynb)
+re-runs **both solvers live** on four entries of the comparison table and compares to the paper. It
+uses the same code path as the full benchmark (loader, LCC reduction, fixed RHS, solver wrappers in
+[`scripts/repro_lib.jl`](scripts/repro_lib.jl), extracted from `scripts/competitor_benchmark.jl`).
+```bash
+# one-time: lean reproduction environment (LAMG + Laplacians.jl only), from the repo root:
+julia --project=examples/repro_env -e 'using Pkg; Pkg.develop(path="."); Pkg.add("Laplacians"); Pkg.instantiate()'
+# place the four .mtx in data/ (or point $LAMGPLUS_DATA at your SuiteSparse cache):
+#   SNAP__web-Stanford, SNAP__web-Google, GHS_psdef__bmwcra_1, Boeing__pwtk
+cd examples && jupyter nbconvert --to notebook --execute --inplace \
+    --ExecutePreprocessor.kernel_name=julia-1.12 reproduce_comparison.ipynb
+```
+The notebook reports reproduced-vs-reported μs/nnz and asserts that the winner and the 1e-8 convergence
+match. On the reference machine the per-nonzero times land within run-to-run wall-clock variance (≤1.3×),
+e.g. (μs/nnz, repro / paper):
+
+| graph | LAMG+ | approxChol | winner (repro = paper) |
+|---|---|---|---|
+| web-Stanford | 0.30 / 0.26 | 0.24 / 0.19 | approxChol ✓ |
+| web-Google   | 0.51 / 0.48 | 0.28 / 0.25 | approxChol ✓ |
+| bmwcra\_1     | 0.09 / 0.08 | 0.25 / 0.28 | LAMG+ ✓ |
+| pwtk         | 0.10 / 0.11 | 0.24 / 0.21 | LAMG+ ✓ |
+
 **Build the paper:**
 ```bash
 cd doc && pdflatex lamg_plus.tex && pdflatex lamg_plus.tex

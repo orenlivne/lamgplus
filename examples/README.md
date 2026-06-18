@@ -75,6 +75,27 @@ Laplacians.jl, and a SuiteSparse downloader, via `examples/Project.toml`) and sh
 output. The other `.jl` examples above use the main solver environment (`--project=.` from the repo
 root), not this one.
 
+## 5. Reproduce the comparison-table numbers
+
+[`reproduce_comparison.ipynb`](reproduce_comparison.ipynb) re-runs **LAMG+ and approxChol live** on four
+entries of the paper's multi-solver comparison table and checks the reproduced timing/accuracy against
+the reported values. It uses the same code path as the full benchmark (the solver wrappers in
+[`../scripts/repro_lib.jl`](../scripts/repro_lib.jl), extracted from `competitor_benchmark.jl`).
+
+```bash
+# one-time: lean env with LAMG + Laplacians.jl (run from the repo root)
+julia --project=examples/repro_env -e 'using Pkg; Pkg.develop(path="."); Pkg.add("Laplacians"); Pkg.instantiate()'
+# place SNAP__web-Stanford, SNAP__web-Google, GHS_psdef__bmwcra_1, Boeing__pwtk in ../data
+# (or set $LAMGPLUS_DATA), then execute:
+cd examples
+jupyter nbconvert --to notebook --execute --inplace \
+    --ExecutePreprocessor.kernel_name=julia-1.12 reproduce_comparison.ipynb
+```
+
+It prints a reproduced-vs-paper table, asserts the winner and 1e-8 convergence reproduce exactly, and
+reports the wall-clock agreement (≤1.3× on the reference machine). Ships with executed output. For the
+full 201-graph table and the other five solvers, run `../scripts/competitor_benchmark.jl`.
+
 ## Run the test suite (verify correctness)
 
 ```bash
