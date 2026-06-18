@@ -107,6 +107,23 @@ e.g. (μs/nnz, repro / paper):
 | bmwcra\_1     | 0.09 / 0.08 | 0.25 / 0.28 | LAMG+ ✓ |
 | pwtk         | 0.10 / 0.11 | 0.24 / 0.21 | LAMG+ ✓ |
 
+**Original LAMG vs LAMG+ on Spielman's families (Table~\ref{tab:lamgorig}).** Gao–Kyng–Spielman
+omit LAMG, reporting it non-convergent across all their families. This three-part script runs the
+*unmodified* LAMG 2.2.1 (under GNU Octave, with their exact solver call) and LAMG+ on the *same*
+graphs and shows both converge on every family:
+```bash
+# Part 1 (LAMG+ side): generate the families (chimera variants, SDDM chimera, Sachdeva star,
+# 2-D/3-D uniform/anisotropic/high-contrast grids, SPE10), solve with LAMG+, export (A,b):
+julia --project=examples/repro_env scripts/gks_family_compare.jl
+# Part 2 (original-LAMG side): run unmodified LAMG 2.2.1 on the same (A,b) via gks2023's call.
+# Needs the LAMG 2.2.1 release made Octave-runnable (LAMG_ORIG_DIR); octave-cli must be installed:
+SCRATCH="$PWD/results/gks_cmp" LAMG_ORIG_DIR=/path/to/lamg-octave \
+    octave-cli --no-gui scripts/gks_family_compare_orig.m
+# Part 3: join the two result sets into the LaTeX table (doc/gks_compare_table.tex):
+julia scripts/gks_family_compare_table.jl
+```
+SPE10 comes from `scripts/build_spe10.jl` (auto-downloads the public OPM permeability field).
+
 **Build the paper:**
 ```bash
 cd doc && pdflatex lamg_plus.tex && pdflatex lamg_plus.tex
