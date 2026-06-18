@@ -9,9 +9,12 @@ the DRA-QC K-cycle. The RHS is projected to the range (zero mean) and the return
 `x` is zero-mean. `info` has fields `iters` and `relres`.
 """
 function draqc_solve(s::DRAQCSolver, b::AbstractVector; tol::Real=1e-8, maxiter::Int=2000)
-    bz = b .- sum(b) / length(b)
-    x, iters, relres = fcg1(s.h.A[1], bz, r -> precond_apply(s, 1, r); tol=tol, maxiter=maxiter)
-    x .-= sum(x) / length(x)
+    n = length(b)
+    bz = b .- sum(b) / n                       # project RHS to the range (zero mean)
+    x = zeros(n)
+    iters = fcg_solve!(s, 1, bz, x, maxiter, tol)
+    x .-= sum(x) / n
+    relres = norm(s.h.A[1] * x - bz) / max(norm(bz), 1e-30)
     return x, (iters = iters, relres = relres)
 end
 
