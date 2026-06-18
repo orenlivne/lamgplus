@@ -759,7 +759,7 @@ operator, on which the operator is the $2\times2$ matrix
 \hat M(\theta)=\hat S(\theta)^{\nu}\Big[\,I-\hat P\,(\hat P^{\ast}\hat L\hat P)^{-1}\hat P^{\ast}\hat L\,\Big],
 \qquad \hat L=\mathrm{diag}\big(\hat L(\theta),\hat L(\theta^{\ast})\big)=:\mathrm{diag}(\ell_1,\ell_2),
 \end{equation}
-with $\hat S$ the smoother symbol, $\nu$ the number of pre-smoothings, $\hat P\in\mathbb C^{2\times1}$
+with $\hat S$ the smoother symbol, $\nu=\nu_{\mathrm{pre}}{+}\nu_{\mathrm{post}}$ the number of smoothing sweeps, $\hat P\in\mathbb C^{2\times1}$
 the interpolation symbol, Galerkin coarse symbol $\hat L_c=\hat P^{\ast}\hat L\hat P$, and variational
 restriction $\hat R=\hat P^{\ast}$. The bracketed coarse-grid correction is the $\hat L$-orthogonal
 projector \emph{off} $\mathrm{range}\,\hat P$, hence idempotent with spectrum $\{0,1\}$: correction
@@ -795,32 +795,38 @@ $q:=1/\beta$ is the local-mode form of the per-node energy ratio \eqref{eq:guard
 caliber-1 commits exactly half of every interpolant's energy to the wrong harmonic, caliber-2 a
 vanishing fraction on the smooth modes.
 
-\emph{The ceiling.} For the explicit $\omega$-Jacobi smoother
-$\hat S(\theta)=1-\tfrac{\omega}{2(1+\epsilon)}\hat L(\theta)$ with $\omega=\tfrac12$ (which annihilates
-the highest $x$-mode, $\theta_x=\pi$), the $\epsilon\to0$ symbols are
-$\hat S(\theta)=\cos^2\tfrac{\theta_x}{2}$ and $\hat S(\theta^{\ast})=\sin^2\tfrac{\theta_x}{2}$. With
-$\beta_{\mathrm{c1}}=\tfrac12$, \eqref{eq:rhotrace} gives
+\emph{The smoother.} We use the cycle's own relaxation---forward Gauss--Seidel ($\omega{=}1$)---with
+symbol $\hat S(\theta)=1-\hat L(\theta)/\hat M(\theta)$, where
+$\hat M(\theta)=(2{+}2\epsilon)-e^{-\mathrm{i}\theta_x}-\epsilon\,e^{-\mathrm{i}\theta_y}$ is its
+lower-triangular (already-updated-neighbor) part; the solver applies it
+$\nu=\nu_{\mathrm{pre}}{+}\nu_{\mathrm{post}}=3$ times per visit (its $(1,2)$ cycle). The symbol is
+complex, so we evaluate \eqref{eq:rhotrace} numerically---but the energy ratio $q$ fixes the outcome.
+
+\emph{The caliber-1 ceiling.} The supremum of \eqref{eq:rhotrace} is attained as $\theta_x\to0$, on modes
+\emph{smooth in $x$}, where any local smoother is powerless ($|\hat S(\theta)|\to1$) while the
+$x$-harmonic is fully smoothed ($\hat S(\theta^{\ast})\to0$). There $\rho\to1-\beta$, so
+$\beta_{\mathrm{c1}}=\tfrac12$ pins
 \begin{equation}\label{eq:c1ceiling}
-\rho_{\mathrm{c1}}(\theta)=\tfrac12\big(\cos^{2\nu}\tfrac{\theta_x}{2}+\sin^{2\nu}\tfrac{\theta_x}{2}\big),
-\qquad \sup_{\theta}\rho_{\mathrm{c1}}=\tfrac12\quad\text{for every }\nu\ge1,
+\rho_{\mathrm{c1}}\ \xrightarrow{\theta_x\to0}\ 1-\beta_{\mathrm{c1}}\;=\;1-\tfrac1q\;=\;\tfrac12\qquad(q=2),
 \end{equation}
-the supremum attained as $\theta_x\to0$. The maximizing modes are \emph{smooth in $x$}, where any local
-smoother is powerless ($\hat S(\theta)\to1$); hence $\rho_{\mathrm{c1}}\ge\tfrac12$ for \emph{any} local
-smoother and any number of sweeps---an irreducible $\rho=1-1/q=\tfrac12$ ceiling set by the
-interpolation, with equality for real-symbol smoothers such as $\omega$-Jacobi and red--black GS.
-Caliber-2 instead has $\beta\to1$ on those same smooth modes, relocating the residual onto the
-$x$-harmonic at $\theta_x=\tfrac\pi2$, a genuinely high-frequency, smoothable mode:
-\begin{equation}\label{eq:c2textbook}
-\rho_{\mathrm{c2}}(\theta)=\cos^{2\nu}\!\tfrac{\theta_x}{2}\,\sin^2\!\tfrac{\theta_x}{2}
-+\sin^{2\nu}\!\tfrac{\theta_x}{2}\,\cos^2\!\tfrac{\theta_x}{2}
-\ \Longrightarrow\
-\sup_{\theta}\rho_{\mathrm{c2}}=\big(\tfrac12\big)^{\nu}\ (\nu\le3),\ \ O(1/\nu)\to0 .
-\end{equation}
-At the operative $\nu=2$ this reads $\rho_{\mathrm{c1}}=\tfrac12$ versus $\rho_{\mathrm{c2}}=\tfrac14$,
-consistent in magnitude and mechanism with the per-level split measured under Gauss--Seidel
-($0.46\!\to\!0.28$, \S\ref{sec:cal2})---the exact Gauss--Seidel constants differ because its symbol is
-complex, unlike the analytic Jacobi model. Raising $\gamma$ and recombination bound the caliber-1 value
-into the multilevel rate of Table~\ref{tab:aniso} but cannot pass it, whereas caliber-2 needs no such crutch.
+an irreducible ceiling sitting on an unsmoothable mode: neither more sweeps nor a stronger smoother
+lowers it. Forward Gauss--Seidel realizes $\sup_\theta\rho_{\mathrm{c1}}\approx0.48$ for
+$\epsilon\le10^{-1}$, matching the directly measured caliber-1 two-grid factor on a periodic grid,
+$\approx0.47$ (Table~\ref{tab:aniso}).
+
+\emph{Caliber-2 removes it.} On those same smooth modes $\beta_{\mathrm{c2}}\to1$ ($q\to1$), so
+$\rho\to1-\beta\to0$: the residual moves to the $x$-harmonic at $\theta_x=\tfrac\pi2$, a genuinely
+high-frequency, smoothable mode. Evaluating \eqref{eq:rhotrace} under the same forward Gauss--Seidel
+gives $\sup_\theta\rho_{\mathrm{c2}}\approx0.08$--$0.09$ for $\epsilon\le10^{-1}$, an order of magnitude
+below the caliber-1 ceiling, and the directly measured periodic-grid two-grid factor agrees
+(Table~\ref{tab:aniso}, ``2-level'': $0.08$--$0.12$; the small excess is the least-squares weight's
+deviation from the ideal $\tfrac12$). Crucially this two-grid factor ($\approx0.1$) is \emph{already}
+the order of the full multilevel solver's caliber-2 rate ($0.007$--$0.1$): with the cycle's own smoother
+the two-grid analysis predicts the solver directly, so $\gamma$-cycling and recombination adjust the
+rate only modestly---there is no large gap for them to close. (On a finite grid the boundary columns
+reach a single coarse aggregate and stay caliber-1, raising the two-grid factor to $\approx0.2$;
+recombination and the multilevel recursion remove that residue.) Caliber-1, by contrast, never clears
+its $q{=}2$ ceiling even as a full multilevel cycle.
 
 \emph{Scope.} The analysis is constant-coefficient: it proves caliber-2's textbook efficiency on a
 \emph{correctly} semicoarsened grid, and so justifies raising the caliber by the interpolation-order
@@ -829,25 +835,30 @@ inversion of \S\ref{sec:soc}, which corrupts the coarsening itself on an unlucky
 the strength-of-connection veto is what secures the clean semicoarsening this analysis assumes, so the
 two refinements are complementary by construction.
 
-\begin{table}[h]\centering\small\setlength{\tabcolsep}{4.5pt}
-\caption{Controlled anisotropy on a $64\times64$ grid, full LAMG+ solver. The two-level ceiling
-($\rho\approx0.5$, caliber-1 energy inflation) is bounded into a robust multilevel rate by
-recombination $+$ $\gamma=1.5$; a flat V-cycle exposes the raw ceiling. Caliber-2 recovers a
-near-geometric rate. ACF $=$ asymptotic convergence factor; the number in parentheses is the
-cycle count to reach $10^{-10}$; the \emph{caliber-2 LFA} column is the analytic two-grid factor
-$\sup_\theta\rho_{\mathrm{c2}}$ from \S\ref{sec:lfa} ($\omega{=}\tfrac12$ Jacobi, $\nu{=}2$); it
-predicts the un-accelerated per-level rate (cf.\ the $0.28$ measured at $\epsilon{=}10^{-4}$,
-\S\ref{sec:cal2}), which $\gamma$-cycling and recombination then accelerate to the full-cycle
-caliber-2 ACF. The $\epsilon{=}1$ row is omitted---there affinity coarsens isotropically, not by the
-$x$-semicoarsening the LFA assumes.}\label{tab:aniso}
-\begin{tabular}{lcccc}
+\begin{table}[h]\centering\footnotesize\setlength{\tabcolsep}{4pt}
+\caption{Controlled anisotropy on a $64\times64$ grid: asymptotic convergence factor by method, all
+using the cycle's relaxation---forward Gauss--Seidel, $\omega{=}1$,
+$(\nu_{\mathrm{pre}},\nu_{\mathrm{post}}){=}(1,2)$. \emph{V-cycle} $=$ flat $\gamma{=}1$ cycle and
+\emph{ML} $=$ the full solver ($\gamma{=}1.5$ $+$ recombination), both the full multilevel solver on the
+finite grid. The two-grid columns---\emph{LFA} (the analytic factor of \S\ref{sec:lfa}), \emph{2-level}
+(one coarsening, exact coarse solve), and \emph{$+$recomb} (the same with recombination)---are measured
+on a \emph{periodic} grid, the local-Fourier setting, so LFA and 2-level are directly comparable: they
+agree (caliber-1 $0.48$ vs $0.47$; caliber-2 $\approx0.09$ vs $0.08$--$0.12$, the small excess being the
+least-squares weight vs the ideal $\tfrac12$). That two-grid factor ($\approx0.1$) is \emph{already} the
+order of the full solver, so recombination and the multilevel recursion change it little. (On the finite
+grid the boundary columns stay caliber-1, raising the two-grid factor to $\approx0.2$; the full solver
+removes that residue.) Caliber-1 never clears its $q{=}2$ ceiling; caliber-2 is inert at $\epsilon{=}1$
+(isotropic, $0\%$ upgrade); ML columns reach $10^{-10}$ in $4$--$15$ cycles.}\label{tab:aniso}
+\begin{tabular}{l cc cccc}
 \toprule
-weak weight $\epsilon$ & caliber-1 ($\gamma{=}1.5$+recomb.) & \textbf{caliber-2} & caliber-2 LFA & flat V-cycle\\
+ & \multicolumn{2}{c}{caliber-1} & \multicolumn{4}{c}{caliber-2}\\
+\cmidrule(lr){2-3}\cmidrule(lr){4-7}
+$\epsilon$ & V-cycle & ML & LFA & 2-level & $+$recomb & ML\\
 \midrule
-$1$ (isotropic)   & 0.010 (5)  & 0.008 (4)          & ---  & 0.74 (40)\\
-$10^{-1}$         & 0.274 (11) & \textbf{0.007} (4) & 0.30 & 0.76 (44)\\
-$10^{-2}$         & 0.335 (14) & \textbf{0.051} (5) & 0.26 & 0.77 (53)\\
-$10^{-4}$         & 0.391 (15) & \textbf{0.100} (6) & 0.25 & 0.77 (56)\\
+$1$       & 0.74 & 0.010 & ---  & ---  & ---  & \textbf{0.008}\\
+$10^{-1}$ & 0.76 & 0.274 & 0.08 & 0.08 & 0.07 & \textbf{0.007}\\
+$10^{-2}$ & 0.77 & 0.335 & 0.09 & 0.11 & 0.09 & \textbf{0.051}\\
+$10^{-4}$ & 0.77 & 0.391 & 0.09 & 0.12 & 0.09 & \textbf{0.100}\\
 \bottomrule
 \end{tabular}
 \end{table}
