@@ -18,14 +18,14 @@ module DRAQC
 using LinearAlgebra
 using SparseArrays
 
-include("src/graph_utils.jl")
-include("src/delta.jl")
-include("src/quality.jl")
-include("src/aggregate.jl")
-include("src/filter.jl")
-include("src/setup.jl")
-include("src/fcg.jl")
-include("src/cycle.jl")
-include("src/solve.jl")
+include("graph_utils.jl")
+include("delta.jl")
+include("quality.jl")
+include("aggregate.jl")
+include("filter.jl")
+include("setup.jl")
+include("fcg.jl")
+include("cycle.jl")
+include("solve.jl")
 
 end # module

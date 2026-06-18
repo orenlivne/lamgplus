@@ -4,7 +4,7 @@
 # (iterations / cycles, convergence); wall-clock from this unoptimized DRA-QC
 # reimplementation is NOT authoritative.
 using LAMG, LinearAlgebra, SparseArrays, Random, Printf
-include(joinpath(@__DIR__, "..", "draqc", "DRAQC.jl"))
+include(joinpath(@__DIR__, "..", "draqc", "src", "DRAQC.jl"))
 using .DRAQC
 
 function aniso2d(nx, ny, ε)

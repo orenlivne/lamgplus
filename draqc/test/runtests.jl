@@ -1,7 +1,7 @@
 # DRA-QC reimplementation test suite.
 # Run: julia --project=. draqc/test/runtests.jl   (from the repo root)
 using Test
-include(joinpath(@__DIR__, "..", "DRAQC.jl"))
+include(joinpath(@__DIR__, "..", "src", "DRAQC.jl"))
 
 @testset "DRAQC" begin
     include("test_delta.jl")

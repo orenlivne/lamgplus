@@ -4,7 +4,7 @@
 # Laplacians dependency); run with the base project:
 #   julia --project=. scripts/draqc_fidelity_spotcheck.jl data/GHS_psdef__bmwcra_1.mtx ...
 using LAMG, LinearAlgebra, SparseArrays, Random, Statistics, Printf
-include(joinpath(@__DIR__, "..", "draqc", "DRAQC.jl"))
+include(joinpath(@__DIR__, "..", "draqc", "src", "DRAQC.jl"))
 using .DRAQC
 
 function read_mm_adj(path)
