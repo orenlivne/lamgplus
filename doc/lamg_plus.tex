@@ -636,6 +636,7 @@ $10^{-8}$ residual in as few or fewer cycles. ``cyc''~=~multigrid cycles; relres
 termination. (LAMG 2.2.1's \texttt{errorReductionTol} test targets the error norm, so its residual
 lands within a small factor of $10^{-8}$---e.g.\ $3.2\!\times\!10^{-8}$ for uniform-weight chimera.)}
 \label{tab:lamgorig}
+\footnotesize\setlength{\tabcolsep}{4pt}%
 \begin{tabular}{l r r r r r r}
 \toprule
  & & & \multicolumn{2}{c}{LAMG 2.2.1} & \multicolumn{2}{c}{LAMG+}\\
@@ -705,13 +706,13 @@ caliber-2 are \emph{complementary} on their target class: on the $256^2$, $\epsi
 the veto alone reaches its caliber-1 ceiling ($\acf\approx0.46$), caliber-2 alone still stalls at
 $0.99$ (the affinity inversion survives), and only both together give $0.11$.
 
-\begin{table}[t]\centering
+\begin{table}[t]\centering\footnotesize\setlength{\tabcolsep}{4pt}
 \caption{When each choice is necessary, and its effect when wrong (negligible elsewhere).
 ``Stresses'' is the graph class on which the choice is load-bearing. Top: LAMG choices LAMG+
 reproduces (\S\S\ref{sec:alg},\,\ref{sec:calib}); bottom: the two anisotropy refinements.}\label{tab:ablate}
-\begin{tabular}{>{\raggedright\arraybackslash}p{3.2cm}
-               >{\raggedright\arraybackslash}p{3.1cm}
-               >{\raggedright\arraybackslash}p{5.3cm}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.9cm}
+               >{\raggedright\arraybackslash}p{2.9cm}
+               >{\raggedright\arraybackslash}p{5.0cm}}
 \toprule
 Choice & Stresses & Effect if wrong\\
 \midrule
