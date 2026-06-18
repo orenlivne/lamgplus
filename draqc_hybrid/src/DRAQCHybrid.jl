@@ -22,5 +22,6 @@ using .DRAQC
 
 include("soc_aggregate.jl")
 include("hybrid_setup.jl")
+include("elim.jl")
 
 end # module

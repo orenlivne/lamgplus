@@ -84,6 +84,51 @@ zmrand(n, s) = (Random.seed!(s); v = randn(n); v .- sum(v)/n)
         end
     end
 
+    @testset "low-degree elimination (deg ≤ d_max)" begin
+        A = grid2d_lap(12, 12); n = size(A, 1)
+        ed, Lc = H.eliminate_lowdeg(A; dmax = 4)
+        @test isempty(intersect(Set(ed.F), Set(ed.C)))      # F, C disjoint
+        @test sort(vcat(ed.F, ed.C)) == collect(1:n)        # partition
+        # F is an independent set ⇒ L_FF strictly diagonal
+        LFF = A[ed.F, ed.F]
+        @test nnz(LFF - Diagonal(diag(LFF))) == 0
+        @test is_lap(Lc)                                     # Schur complement is a Laplacian
+        # dmax=4 eliminates strictly more than dmax=1 on a grid
+        ed1, _ = H.eliminate_lowdeg(A; dmax = 1)
+        @test length(ed.F) > length(ed1.F)
+
+        # EXACTNESS: eliminate + exact coarse solve + back-substitute == direct solve
+        b = zmrand(n, 5)
+        bF = b[ed.F]; bc = b[ed.C] - ed.LFC' * (bF ./ ed.dff)
+        φC = pinv(Matrix(Lc)) * bc
+        φ = zeros(n); φ[ed.F] = H.backsub(ed, bF, φC); φ[ed.C] = φC; φ .-= sum(φ)/n
+        φdir = pinv(Matrix(A)) * b; φdir .-= sum(φdir)/n
+        @test φ ≈ φdir rtol = 1e-8
+    end
+
+    @testset "hybrid_elim (deg≤4) solves correctly" begin
+        for A in (grid2d_lap(48, 48), aniso2d_lap(64, 64, 1e-4))
+            b = zmrand(size(A,1), 4)
+            φ, info, sz = H.hybrid_elim(A, b; dmax = 4, tol = 1e-8)
+            @test norm(A * φ - b) / norm(b) <= 1e-7
+            @test sz.nF > 0
+        end
+    end
+
+    @testset "TARGET: deg≤4 elimination rescues high-contrast" begin
+        # 7-decade random weights; SoC veto alone over-fragments and stalls, but
+        # exact degree-≤4 elimination + SoC hybrid converges.
+        rng = MersenneTwister(1); nx = ny = 96; idx(i,j) = (j-1)*nx + i
+        I, J, V = Int[], Int[], Float64[]
+        ae(a,b) = (w = 10.0^(7*rand(rng) - 3.5); push!(I,a);push!(J,b);push!(V,-w); push!(I,b);push!(J,a);push!(V,-w))
+        for j in 1:ny, i in 1:nx; i<nx && ae(idx(i,j),idx(i+1,j)); j<ny && ae(idx(i,j),idx(i,j+1)); end
+        A = sparse(I,J,V,nx*ny,nx*ny); A = sparse(Diagonal(-vec(sum(A;dims=2)))) + A
+        b = zmrand(size(A,1), 6)
+        φ, info, sz = H.hybrid_elim(A, b; dmax = 4, tol = 1e-8, maxiter = 400)
+        @test info.relres <= 1e-8
+        @test norm(A * φ - b) / norm(b) <= 1e-7
+    end
+
     @testset "no regression on isotropic / structured grids" begin
         for (nx, ny) in ((48, 48), (64, 64))
             A = grid2d_lap(nx, ny); b = zmrand(size(A,1), 2)

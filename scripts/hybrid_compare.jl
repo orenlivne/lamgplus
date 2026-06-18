@@ -32,15 +32,16 @@ cases = [
     ("isotropic 128²",    grid2d(128,128)),
 ]
 tol = 1e-8; maxit = 1500
-@printf("%-20s %8s | %-9s | %-14s | %-14s\n", "family", "n", "LAMG+ cyc", "DRA-QC iters", "Hybrid iters")
-println("-"^74)
+@printf("%-20s %8s | %-9s | %-12s | %-12s | %-16s\n", "family", "n", "LAMG+ cyc", "DRA-QC it", "Hybrid it", "Hybrid+elim4 it")
+println("-"^86)
 for (name, L) in cases
     n = size(L,1); Random.seed!(1); xt=randn(n); xt.-=sum(xt)/n; b=L*xt
     o=LAMGOptions(tol=tol,max_cycles=200); hl=setup(L;options=o); (xl,il)=solve(hl,b;options=o)
     lc = norm(L*xl-b)/norm(b)<=tol*10 ? il.cycles : -1
     hd=D.draqc_setup(L); sd=D.DRAQCSolver(hd); (_,idq)=D.draqc_solve(sd,b;tol=tol,maxiter=maxit)
     hh=H.hybrid_setup(L); sh=D.DRAQCSolver(hh); (_,ih)=D.draqc_solve(sh,b;tol=tol,maxiter=maxit)
-    dq = idq.relres<=tol*10 ? "$(idq.iters)" : ">$(maxit)"
-    hy = ih.relres<=tol*10 ? "$(ih.iters)" : ">$(maxit)"
-    @printf("%-20s %8d | cyc=%-5d | %-14s | %-14s\n", name, n, lc, dq, hy)
+    (φe, ie, sz)=H.hybrid_elim(L, b; dmax=4, tol=tol, maxiter=maxit)
+    fmt(info)= info.relres<=tol*10 ? "$(info.iters)" : ">$(maxit)"
+    ee = norm(L*φe-b)/norm(b)<=tol*10 ? "$(ie.iters) (nC=$(sz.nC))" : ">$(maxit)"
+    @printf("%-20s %8d | cyc=%-5d | %-12s | %-12s | %-16s\n", name, n, lc, fmt(idq), fmt(ih), ee)
 end
