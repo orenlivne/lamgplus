@@ -107,7 +107,7 @@ than the irregular degree distributions of graph Laplacians. In the broadest rec
 families, leaving the approximate-elimination solver AC (the \texttt{approxchol\_lap2} variant)
 the only blackbox method robust across all of them; the original MATLAB LAMG was reported
 non-convergent there, whereas our independent re-derivation converges on those families
-(\S\ref{sec:families})---a difference specific to that implementation, not the algorithm. We thus consider
+(\S\ref{sec:families})---a failure specific to that evaluation, not the algorithm. We thus consider
 approxChol as our sole robust near-linear baseline, with CHOLMOD for the
 direct-method crossover. We also compare with the other AMG solvers for the specific graph classes they converge on.
 
@@ -118,7 +118,7 @@ solution---by regulating the coarse-operator \emph{energy} rather than aggregate
 \textbf{LAMG+}: an open re-derivation of the algorithm\footnote{Open-source Julia implementation,
 including all scripts to reproduce the experiments in this paper: \url{https://github.com/orenlivne/lamgplus}.}
 (validated line-by-line against the
-original MATLAB reference, App.~\ref{sec:valid}) that we use to establish three things.
+original MATLAB reference) that we use to establish three things.
 \begin{itemize}[leftmargin=1.4em,itemsep=1pt]
 \item \emph{A fair, same-language adjudication against the modern near-linear champion}
 (\S\ref{sec:compete}). LAMG (2012) predates and was never compared with GKS's approxi\-mate-Cholesky
@@ -401,7 +401,7 @@ ak2010         & road        & 42\,381 & 102\,091 & 0.0066     & 4 & 0.12\\
 
 \subsection{Linear scaling}\label{sec:scaling}
 Figure~\ref{fig:scaling} plots LAMG+ per-edge setup and solve time versus $m$ for all $1{,}711$
-SuiteSparse graphs ($50\le n\le10^6$, $52 \le m \le 9.8\!\times\!10^5$). Every one converges to $\varepsilon=10^{-8}$, in a median of $4$ cycles. The log--log slopes of per-edge time are $+0.005$ (setup)
+SuiteSparse graphs ($100\le n\le1.2\!\times\!10^7$). Every one converges to $\varepsilon=10^{-8}$, in a median of $4$ cycles. The log--log slopes of per-edge time are $+0.005$ (setup)
 and $-0.002$ (solve): per-edge cost is independent of $m$, supporting the empirical $\Om$ statement
 (equivalently, total setup$+$solve time scales as $m^{1.01}$). The medians are
 $t_{\text{setup}}/m\approx0.24~\mu$s/edge (IQR $[0.18,0.34]$) and
@@ -906,17 +906,6 @@ Then both energies in \eqref{eq:guard} are closed forms: the relaxed (optimal) e
 $\min_y E_u=\tfrac12\big(s_2^{(k)}-(s_1^{(k)})^2/s_0\big)$ and the forced energy is
 $E_u(\cdot;x_s)=\tfrac12\big(x_s^2 s_0-2x_s s_1^{(k)}+s_2^{(k)}\big)$, so each candidate costs
 $\mathcal{O}(K)$, independent of degree.
-
-\section{Validation methodology}\label{sec:valid}
-The implementation was validated line-by-line against the unmodified MATLAB reference
-\texttt{lamg-2.2.1} run under Octave: we recompiled its C MEX kernels (so Octave executes the
-\emph{exact} Gauss--Seidel, Galerkin, aggregation-sweep, and low-degree-sweep kernels) and
-mechanically adapted Octave's class incompatibilities. We exported each $(L,b)$ from the implementation and loaded the identical
-system in Octave, eliminating preprocessing as a variable; both emit a state trace (level,
-residual norm, iterate norm) in the same format. We verified that the elimination set $|F|$,
-the Schur operators (residual $10^{-16}$), and cycle stationarity (recombination off
-$\Rightarrow$ constant asymptotic factor) match, and that the reference performs no weight
-preprocessing.
 
 \begin{thebibliography}{99}
 \small\setlength{\itemsep}{0.3ex}
