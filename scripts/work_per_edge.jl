@@ -101,6 +101,7 @@ function hicontrast2d(nx,ny;seed=1); rng=MersenneTwister(seed); idx(i,j)=(j-1)*n
   for j in 1:ny,i in 1:nx; i<nx&&ae(idx(i,j),idx(i+1,j)); j<ny&&ae(idx(i,j),idx(i,j+1)); end
   W=sparse(I,J,V,nx*ny,nx*ny); sparse(Diagonal(-vec(sum(W;dims=2))))+W; end
 
+if abspath(PROGRAM_FILE) == @__FILE__   # driver runs only when invoked directly; functions+loaders reusable on include
 dd = joinpath(@__DIR__,"..","data")
 cases = Tuple{String,SparseMatrixCSC}[]
 for g in ("Boeing__pwtk","GHS_psdef__bmwcra_1","SPE__spe10_2_nz20","SNAP__web-Stanford")
@@ -124,3 +125,4 @@ for (name,L) in cases
     dw.it,dw.oc,dw.wpe, dw.ok ? "✓" : "✗", r, r>1 ? "(LAMG+ leaner)" : "(DRA-QC leaner)")
 end
 println("\nWPE = work per edge (nnz multiply-adds / edge) to 1e-8; PASSES=$(PASSES)/visit; both ≈8 digits.")
+end  # driver guard
