@@ -25,7 +25,7 @@ near-linear champion---and four other state-of-the-art solvers (hypre/BoomerAMG,
 CMG). LAMG+ and AC are \emph{complementary peers}: AC is faster on social and
 citation graphs, LAMG+ on finite-element/structural matrices (where it is the fastest robust solver
 and the most memory-frugal) and $2.2\times$ faster than the robust AC variant on large
-graphs. LAMG+ and AC are the only solvers that converge across all thirteen test classes, while BoomerAMG, PETSc, pyAMG, and CMG each slow by an order of magnitude or fail to converge off their home turf. (2)
+graphs. LAMG+ and AC are the only solvers that converge across all 13 test classes, while BoomerAMG, PETSc, pyAMG, and CMG each slow by an order of magnitude or fail to converge off their home turf. (2)
 \emph{Linear scaling}: LAMG+ is empirically $\Om$ over the full $1{,}711$-graph SuiteSparse set
 ($100\%$ converged, median $4$ cycles, log--log slope $1.01$), verified to $2.4\!\times\!10^8$. (3)
 \emph{Robustness}: the original MATLAB LAMG was reported non-convergent across the
@@ -478,7 +478,7 @@ wins are by similar factors to LAMG+'s FE/structural wins), and $76\%$ against t
 it is $2.2\times$ faster in geometric mean. (At the lower $10^{-4}$ accuracy many applications need, the balance shifts toward LAMG+; cf.~\S\ref{sec:tol4}.) Sparse Cholesky is fastest where good separators exist (web crawls, road)
 but cannot factor the largest poorly-separable matrices at all.
 
-Table~\ref{tab:classcomp} widens the comparison to all seven solvers across thirteen graph classes,
+Table~\ref{tab:classcomp} widens the comparison to all seven solvers across 13 graph classes,
 including all of the AC benchmark's synthetic families. The result is a clean
 separation by design intent. On the structured classes they were built for---FE/structural
 and grids---the four algebraic-multigrid solvers (LAMG+, pyAMG, BoomerAMG, PETSc GAMG) are all fast
@@ -576,15 +576,12 @@ correlation of $\log\bar d$ with a LAMG+ win is $r=+0.68$ ($+0.72$ at $\varepsil
 mean degree thus predicts the faster solver a priori at either accuracy.}\label{fig:predictor}
 \end{figure}
 
-\paragraph{Does a richer model help?} The residual $9\%$ invites a learned selector. We tested one: a
-gradient-boosted decision tree (a histogram model of the LightGBM class) trained on \emph{thirteen}
+\paragraph{Does a richer model help?} We tested a learned selector to try to explain the residual $9\%$: a gradient-boosted decision tree (a histogram model of the LightGBM class~\cite{lightgbm}) trained on $13$
 further a-priori features of the degree distribution---median, maximum, $90$th/$99$th percentiles,
 standard deviation, coefficient of variation, skewness, hub ratio $\max/\bar d$, and the leaf- and
 high-degree fractions, all computable before any solve. Under repeated stratified $5$-fold
 cross-validation ($20$ repeats; a single $80/20$ split is too small to be stable at $n{=}201$) it
-attains $89\pm4\%$---\emph{not} better than the one-line $\bar d$ threshold ($91\%$)---and a tree
-given $\bar d$ alone scores the same, with permutation importance concentrated almost entirely on
-$\bar d$ (every shape feature contributes $\le0.01$). The degree \emph{distribution} thus carries no
+attains $89\pm4\%$---no better than the one-line $\bar d$ threshold ($91\%$); permutation importance concentrates almost entirely on $\bar d$, every other feature contributing $\le0.01$. The degree distribution thus carries no
 a-priori signal beyond its mean; the residual $9\%$ is governed by separability, a global property no
 cheap local statistic exposes, so the principled one-statistic rule is also the near-optimal one. A
 black-box library can apply it directly---dispatch to LAMG+ when $\bar d\gtrsim30$ and to
@@ -739,48 +736,47 @@ smooth-in-strong mode, inflating the coarse-operator energy by $q\approx2$ and p
 
 \subsection{A two-grid local Fourier analysis}\label{sec:lfa}
 The ceiling $\rho\approx\tfrac12$ and its removal by
-caliber-2 can be \emph{derived}, not only measured. On the constant-coefficient model---strong weight
-$1$ along $x$, weak weight $\epsilon$ along $y$ on $\mathbb Z^2$---the Laplacian acts on the grid mode
-$\varphi_\theta(\mathbf m)=e^{\mathrm{i}\,\theta\cdot\mathbf m}$ with symbol
+caliber-2 follow from a standard two-grid local Fourier analysis \cite[\S4.1]{guide}. Consider the
+constant-coefficient infinite grid (strong weight $1$ along $x$, weak weight $\epsilon$ along $y$ on
+$\mathbb Z^2$); the Laplacian acts on the error mode
+$\varphi_\theta(\mathbf m)=e^{\mathrm{i}\,\theta\cdot\mathbf m}$,
+$\theta=(\theta_x,\theta_y)\in(-\pi,\pi]^2$. Abbreviate $c=\cos^2\tfrac{\theta_x}{2}$ and
+$s=\sin^2\tfrac{\theta_x}{2}$ ($c{+}s=1$); then
 \begin{equation}\label{eq:Lsymbol}
-\hat L(\theta)=4\sin^2\tfrac{\theta_x}{2}+4\epsilon\sin^2\tfrac{\theta_y}{2},
-\qquad \theta=(\theta_x,\theta_y)\in(-\pi,\pi]^2 .
+\hat L(\theta)=4s+4\epsilon\sin^2\tfrac{\theta_y}{2}.
 \end{equation}
-As $\epsilon\ll1$, $\hat L(\theta)$ is small exactly when $\theta_x\approx0$ for \emph{any} $\theta_y$:
-the algebraically smooth error is smooth along the strong axis but unconstrained across the weak one.
-Affinity therefore semicoarsens $2{:}1$ in $x$ and keeps every $y$-line---the correct coarsening, since
-full $y$-resolution represents the $\theta_y$-oscillatory slow modes (Fig.~\ref{fig:semicoarsen}).
+Since $\epsilon\ll1$, $\hat L(\theta)$ is small exactly when $\theta_x\approx0$ for any $\theta_y$ (the
+algebraically smooth error); affinity therefore semicoarsens $2{:}1$ in $x$ and keeps every $y$-line
+(Fig.~\ref{fig:semicoarsen}).
 
-\emph{Harmonics.} The $2{:}1$ $x$-coarsening folds each low mode $\theta$
-($\theta_x\in(-\tfrac\pi2,\tfrac\pi2]$) with its $x$-harmonic
-$\theta^{\ast}=(\theta_x{+}\pi,\,\theta_y)$; the pair spans a subspace invariant under the two-grid
-operator, on which the operator is the $2\times2$ matrix
+\paragraph{Two-level cycle symbol.}
+Coarsening in $x$ at fixed $\theta_y$, the $2{:}1$ step folds each low mode $\theta$ ($\theta_x\in(-\tfrac\pi2,\tfrac\pi2]$) with its $x$-harmonic $\theta^{\ast}=(\theta_x{+}\pi,\,\theta_y)$ (same $\theta_y$); the pair spans a subspace invariant under the two-grid operator, on which the operator is the $2\times2$ matrix
 \begin{equation}\label{eq:tgsymbol}
-\hat M(\theta)=\hat S(\theta)^{\nu}\Big[\,I-\hat P\,(\hat P^{\ast}\hat L\hat P)^{-1}\hat P^{\ast}\hat L\,\Big],
-\qquad \hat L=\mathrm{diag}\big(\hat L(\theta),\hat L(\theta^{\ast})\big)=:\mathrm{diag}(\ell_1,\ell_2),
+\hat T(\theta)=\hat S(\theta)^{\nu}\Big[\,I-\hat P\,(\hat P^{\ast}\hat L\hat P)^{-1}\hat P^{\ast}\hat L\,\Big],\qquad
+\hat L=\mathrm{diag}\big(\hat L(\theta),\hat L(\theta^{\ast})\big)=:\mathrm{diag}(\ell_1,\ell_2),
 \end{equation}
-with $\hat S$ the smoother symbol, $\nu=\nu_{\mathrm{pre}}{+}\nu_{\mathrm{post}}$ the number of smoothing sweeps, $\hat P\in\mathbb C^{2\times1}$
-the interpolation symbol, Galerkin coarse symbol $\hat L_c=\hat P^{\ast}\hat L\hat P$, and variational
-restriction $\hat R=\hat P^{\ast}$. The bracketed coarse-grid correction is the $\hat L$-orthogonal
-projector \emph{off} $\mathrm{range}\,\hat P$, hence idempotent with spectrum $\{0,1\}$: correction
-alone does not converge---the smoother must remove whatever the coarse space omits.
+with the $2\times2$ diagonal smoother symbol $\hat S(\theta)=\mathrm{diag}\big(\tilde S(\theta),\,\tilde S(\theta^{\ast})\big)$,
+$\nu=\nu_{\mathrm{pre}}{+}\nu_{\mathrm{post}}=3$ Gauss--Seidel sweeps, $\hat P\in\mathbb C^{2\times1}$ the
+interpolation symbol, and the bracketed coarse-grid correction the $\hat L$-orthogonal projector off
+$\mathrm{range}\,\hat P$.
 
-\emph{Interpolation symbols.} Write $s=\sin^2\tfrac{\theta_x}{2}$, $c=\cos^2\tfrac{\theta_x}{2}$
-($s{+}c=1$). Interpolating the fine point midway between two coarse parents has the symbol (up to a
+\emph{Smoother.} $\tilde S$ is the scalar forward Gauss--Seidel symbol $\tilde S(\theta)=1-\hat L(\theta)/\hat M(\theta)$,
+where $\hat M(\theta)=(2{+}2\epsilon)-e^{-\mathrm{i}\theta_x}-\epsilon\,e^{-\mathrm{i}\theta_y}$ is the
+lower-triangular (already-updated-neighbor) part of $L$.
+
+\emph{Interpolation.} Interpolating the fine point midway between two coarse parents has the symbol (up to a
 unimodular phase that cancels in \eqref{eq:tgsymbol})
 \begin{equation}\label{eq:Psymbols}
 \hat P_{\mathrm{c1}}\propto\begin{pmatrix}\cos\tfrac{\theta_x}{2}\\[2pt]\mathrm{i}\,\sin\tfrac{\theta_x}{2}\end{pmatrix}
 \ \ (\text{caliber-1, piecewise constant}),\qquad
 \hat P_{\mathrm{c2}}=\begin{pmatrix}c\\ s\end{pmatrix}\ \ (\text{caliber-2, linear}).
 \end{equation}
-The decisive difference is the \emph{harmonic} (second) component as $\theta_x\to0$: it is $O(\theta_x)$
-for caliber-1 but $O(\theta_x^2)$ for caliber-2. Caliber-2 injects asymptotically no energy into the
-unresolved harmonic of a smooth mode---the order-$2$ interpolation property \cite[\S4.3]{guide}.
+The decisive difference is the \emph{harmonic} (second) component as $\theta_x\to0$: it is $O(\theta_x)$ for caliber-1 but $O(\theta_x^2)$ for caliber-2. Caliber-2 injects asymptotically no energy into the unresolved harmonic of a smooth mode---the order-$2$ interpolation requirement of \cite[\S4.3]{guide}.
 
-\emph{The factor.} The correction in \eqref{eq:tgsymbol} is a rank-one projector, so $\det\hat M=0$
+\emph{Energy factor.} The coarse-grid correction in \eqref{eq:tgsymbol} is a rank-one projector, so $\det\hat T=0$
 and the spectral radius equals the trace:
 \begin{equation}\label{eq:rhotrace}
-\rho\big(\hat M(\theta)\big)=\big|\,\hat S(\theta)^{\nu}(1-\beta)+\hat S(\theta^{\ast})^{\nu}\,\beta\,\big|,
+\rho\big(\hat T(\theta)\big)=\big|\,\tilde S(\theta)^{\nu}(1-\beta)+\tilde S(\theta^{\ast})^{\nu}\,\beta\,\big|,
 \qquad
 \beta=\frac{|\hat P_1|^2\,\ell_1}{|\hat P_1|^2\,\ell_1+|\hat P_2|^2\,\ell_2}\in[0,1],
 \end{equation}
@@ -790,65 +786,35 @@ $q:=1/\beta$ is the local-mode form of the per-node energy ratio \eqref{eq:guard
 \begin{equation}\label{eq:betas}
 \beta_{\mathrm{c1}}=\tfrac12\ \ (q=2)\quad\text{for every }\theta_x,
 \qquad
-\beta_{\mathrm{c2}}=\cos^2\tfrac{\theta_x}{2}\to1\ \ (q\to1)\ \text{ as }\theta_x\to0 :
+\beta_{\mathrm{c2}}=c\to1\ \ (q\to1)\ \text{ as }\theta_x\to0 :
 \end{equation}
 caliber-1 commits exactly half of every interpolant's energy to the wrong harmonic, caliber-2 a
 vanishing fraction on the smooth modes.
 
-\emph{The smoother.} We use the cycle's own relaxation---forward Gauss--Seidel ($\omega{=}1$)---with
-symbol $\hat S(\theta)=1-\hat L(\theta)/\hat M(\theta)$, where
-$\hat M(\theta)=(2{+}2\epsilon)-e^{-\mathrm{i}\theta_x}-\epsilon\,e^{-\mathrm{i}\theta_y}$ is its
-lower-triangular (already-updated-neighbor) part; the solver applies it
-$\nu=\nu_{\mathrm{pre}}{+}\nu_{\mathrm{post}}=3$ times per visit (its $(1,2)$ cycle). The symbol is
-complex, so we evaluate \eqref{eq:rhotrace} numerically---but the energy ratio $q$ fixes the outcome.
-
 \emph{The caliber-1 ceiling.} The supremum of \eqref{eq:rhotrace} is attained as $\theta_x\to0$, on modes
-\emph{smooth in $x$}, where any local smoother is powerless ($|\hat S(\theta)|\to1$) while the
-$x$-harmonic is fully smoothed ($\hat S(\theta^{\ast})\to0$). There $\rho\to1-\beta$, so
+\emph{smooth in $x$}, where any local smoother is powerless ($|\tilde S(\theta)|\to1$) while the
+$x$-harmonic is fully smoothed ($\tilde S(\theta^{\ast})\to0$). There $\rho\to1-\beta$, so
 $\beta_{\mathrm{c1}}=\tfrac12$ pins
 \begin{equation}\label{eq:c1ceiling}
-\rho_{\mathrm{c1}}\ \xrightarrow{\theta_x\to0}\ 1-\beta_{\mathrm{c1}}\;=\;1-\tfrac1q\;=\;\tfrac12\qquad(q=2),
+\rho_{\mathrm{c1}}\ \xrightarrow{\theta_x\to0}\ 1-\beta_{\mathrm{c1}}\;=\;1-\tfrac1q\;=\;\tfrac12\qquad(q=2).
 \end{equation}
-an irreducible ceiling sitting on an unsmoothable mode: neither more sweeps nor a stronger smoother
-lowers it. Forward Gauss--Seidel realizes $\sup_\theta\rho_{\mathrm{c1}}\approx0.48$ for
-$\epsilon\le10^{-1}$, matching the directly measured caliber-1 two-grid factor on a periodic grid,
-$\approx0.47$ (Table~\ref{tab:aniso}).
+This ACF does not improve with more relaxation sweeps per cycle.
 
 \emph{Caliber-2 removes it.} On those same smooth modes $\beta_{\mathrm{c2}}\to1$ ($q\to1$), so
 $\rho\to1-\beta\to0$: the residual moves to the $x$-harmonic at $\theta_x=\tfrac\pi2$, a genuinely
 high-frequency, smoothable mode. Evaluating \eqref{eq:rhotrace} under the same forward Gauss--Seidel
-gives $\sup_\theta\rho_{\mathrm{c2}}\approx0.08$--$0.09$ for $\epsilon\le10^{-1}$, an order of magnitude
-below the caliber-1 ceiling, and the directly measured periodic-grid two-grid factor agrees
-(Table~\ref{tab:aniso}, ``2-level'': $0.08$--$0.12$; the small excess is the least-squares weight's
-deviation from the ideal $\tfrac12$). Crucially this two-grid factor ($\approx0.1$) is \emph{already}
-the order of the full multilevel solver's caliber-2 rate ($0.007$--$0.1$): with the cycle's own smoother
-the two-grid analysis predicts the solver directly, so $\gamma$-cycling and recombination adjust the
-rate only modestly---there is no large gap for them to close. (On a finite grid the boundary columns
-reach a single coarse aggregate and stay caliber-1, raising the two-grid factor to $\approx0.2$;
-recombination and the multilevel recursion remove that residue.) Caliber-1, by contrast, never clears
-its $q{=}2$ ceiling even as a full multilevel cycle.
+gives $\sup_\theta\rho_{\mathrm{c2}}\approx0.08$--$0.09$ for $\epsilon\le10^{-1}$---textbook two-grid efficiency.
 
-\emph{Scope.} The analysis is constant-coefficient: it proves caliber-2's textbook efficiency on a
-\emph{correctly} semicoarsened grid, and so justifies raising the caliber by the interpolation-order
-rule \cite[\S4.3]{guide} rather than by experiment. It does not see the finite-sample affinity
-inversion of \S\ref{sec:soc}, which corrupts the coarsening itself on an unlucky test-vector sample;
-the strength-of-connection veto is what secures the clean semicoarsening this analysis assumes, so the
-two refinements are complementary by construction.
+Table~\ref{tab:aniso} compares caliber-1, the caliber-2 LFA prediction, and the measured caliber-2 two-grid factor against anisotropy strength. The LFA predicts the two-grid factor well; the small excess of the measured value is the least-squares weight's deviation from the ideal $\tfrac12$. Recombination adds a marginal improvement, and the full multilevel solver even beats the two-grid LFA rate for $\epsilon\ge10^{-2}$.
 
 \begin{table}[h]\centering\footnotesize\setlength{\tabcolsep}{4pt}
-\caption{Controlled anisotropy on a $64\times64$ grid: asymptotic convergence factor by method, all
-using the cycle's relaxation---forward Gauss--Seidel, $\omega{=}1$,
-$(\nu_{\mathrm{pre}},\nu_{\mathrm{post}}){=}(1,2)$. \emph{V-cycle} $=$ flat $\gamma{=}1$ cycle and
-\emph{ML} $=$ the full solver ($\gamma{=}1.5$ $+$ recombination), both the full multilevel solver on the
-finite grid. The two-grid columns---\emph{LFA} (the analytic factor of \S\ref{sec:lfa}), \emph{2-level}
-(one coarsening, exact coarse solve), and \emph{$+$recomb} (the same with recombination)---are measured
-on a \emph{periodic} grid, the local-Fourier setting, so LFA and 2-level are directly comparable: they
-agree (caliber-1 $0.48$ vs $0.47$; caliber-2 $\approx0.09$ vs $0.08$--$0.12$, the small excess being the
-least-squares weight vs the ideal $\tfrac12$). That two-grid factor ($\approx0.1$) is \emph{already} the
-order of the full solver, so recombination and the multilevel recursion change it little. (On the finite
-grid the boundary columns stay caliber-1, raising the two-grid factor to $\approx0.2$; the full solver
-removes that residue.) Caliber-1 never clears its $q{=}2$ ceiling; caliber-2 is inert at $\epsilon{=}1$
-(isotropic, $0\%$ upgrade); ML columns reach $10^{-10}$ in $4$--$15$ cycles.}\label{tab:aniso}
+\caption{Grid-aligned anisotropy on a $64\times64$ grid: asymptotic convergence factor by method.
+Under caliber-1, \emph{V-cycle} $=$ flat $\gamma{=}1$ $(1,2)$-cycle and \emph{ML} $=$ the full solver
+($\gamma{=}1.5$ $+$ recombination). Under caliber-2, \emph{LFA} is the local Fourier analysis
+prediction, \emph{2-level} the measured two-grid factor without iterate recombination, \emph{$+$recomb}
+the same with recombination, and \emph{ML} the full LAMG+ multilevel solver with the caliber-2
+refinement. The two-grid columns (LFA, 2-level, $+$recomb) are measured on a periodic grid to match the
+infinite-grid analysis; caliber-2 is inert at $\epsilon{=}1$ (isotropic, $0\%$ upgrade).}\label{tab:aniso}
 \begin{tabular}{l cc cccc}
 \toprule
  & \multicolumn{2}{c}{caliber-1} & \multicolumn{4}{c}{caliber-2}\\
@@ -999,8 +965,8 @@ smoothing: polynomial versus Gauss--Seidel}, J.\ Comput.\ Phys.\ \textbf{188}(2)
 matrices}, in Proc.\ 24th National Conference of the ACM, 1969, pp.~157--172.
 \bibitem{metis} G.~Karypis and V.~Kumar, \emph{A fast and high quality multilevel scheme for
 partitioning irregular graphs}, SIAM J.\ Sci.\ Comput.\ \textbf{20}(1), 359--392, 1998.
-\bibitem{brandt-guide} A.~Brandt and O.~E.~Livne, \emph{Multigrid Techniques: 1984 Guide with
-Applications to Fluid Dynamics, Revised Edition}, SIAM, 2011 (Full Approximation Scheme,
-nonlinear multigrid).
+\bibitem{lightgbm} G.~Ke, Q.~Meng, T.~Finley, T.~Wang, W.~Chen, W.~Ma, Q.~Ye, and T.-Y.~Liu,
+\emph{LightGBM: a highly efficient gradient boosting decision tree}, in \emph{Advances in Neural
+Information Processing Systems (NeurIPS)} \textbf{30}, 2017.
 \end{thebibliography}
 \end{document}
