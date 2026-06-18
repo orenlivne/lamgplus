@@ -105,8 +105,10 @@ function refine_aggregate(A::SparseMatrixCSC, members::AbstractVector{<:Integer}
         return S
     end
     maxdepth <= 0 && return S
+    # subgroup extraction; per Algorithm 3 step 13 the security factor η grows by
+    # 0.5 each re-entry, making the keep criterion progressively more stringent.
     Gp = subgroup_signsplit(A, S, root, δ)
-    new = subgroup_extract(A, S, Gp, root, δ; κbar=κbar, η=η)
+    new = subgroup_extract(A, S, Gp, root, δ; κbar=κbar, η=η + 0.5)
     length(new) >= length(S) && return S             # no progress ⇒ stop
-    return refine_aggregate(A, new, root, δ; κbar=κbar, η=η, maxdepth=maxdepth - 1)
+    return refine_aggregate(A, new, root, δ; κbar=κbar, η=η + 0.5, maxdepth=maxdepth - 1)
 end

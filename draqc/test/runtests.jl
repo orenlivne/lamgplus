@@ -8,4 +8,6 @@ include(joinpath(@__DIR__, "..", "DRAQC.jl"))
     include("test_quality.jl")
     include("test_aggregate.jl")
     include("test_filter.jl")
+    include("test_setup.jl")
+    include("test_solve.jl")
 end

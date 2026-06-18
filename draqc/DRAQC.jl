@@ -23,5 +23,9 @@ include("src/delta.jl")
 include("src/quality.jl")
 include("src/aggregate.jl")
 include("src/filter.jl")
+include("src/setup.jl")
+include("src/fcg.jl")
+include("src/cycle.jl")
+include("src/solve.jl")
 
 end # module
