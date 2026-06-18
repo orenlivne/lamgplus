@@ -1,0 +1,22 @@
+# Environment for the LAMG+ demo notebook (examples/notebooks/lamgplus_demo.ipynb).
+#
+# One-time setup (from this directory):
+#   julia --project=. -e 'using Pkg; Pkg.instantiate()'
+# then register the IJulia kernel if you do not have one:
+#   julia --project=. -e 'using Pkg; Pkg.add("IJulia"); using IJulia; installkernel("Julia")'
+#
+# LAMG+ itself is pulled from the repo root via [sources]; everything else is registered.
+[deps]
+IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
+LAMG = "5a7e4c11-0000-4a1e-9c2f-1a2b3c4d5e6f"
+Laplacians = "6f8e5838-0efe-5de0-80a3-5fb4f8dbb1de"
+SuiteSparseMatrixCollection = "ac199af8-68bc-55b8-82c4-7abd6f96ed98"
+MatrixMarket = "4d4711f2-db25-561a-b6b3-d35e7d4047d3"
+UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[sources]
+LAMG = {path = "../.."}

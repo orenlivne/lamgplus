@@ -58,6 +58,21 @@ julia --project=scripts/competitor_env examples/compare_approxchol.jl data/Gleic
 Reports best-of-3 setup+solve time per nonzero (µs/nnz, the metric of Gao–Kyng–Spielman
 2023) for LAMG+, AC (`approxchol_lap2`, the robust 2023 variant), and `approxchol_lap` (2016).
 
+## 4. Demo notebook — LAMG+ vs approxChol vs AC
+
+A self-contained Jupyter notebook that times all three solvers on a synthetic grid and on a
+graph downloaded from the SuiteSparse test set, illustrating the degree crossover (approxChol
+wins the low-degree grid; LAMG+ wins the high-degree finite-element graph):
+
+```bash
+cd examples/notebooks
+julia --project=. -e 'using Pkg; Pkg.instantiate()'                       # one-time
+julia --project=. -e 'using IJulia; jupyterlab()'                         # or open in any Jupyter
+```
+
+Then open [`notebooks/lamgplus_demo.ipynb`](notebooks/lamgplus_demo.ipynb). It has its own
+environment (LAMG+, Laplacians.jl, and a SuiteSparse downloader) and ships with executed output.
+
 ## Run the test suite (verify correctness)
 
 ```bash

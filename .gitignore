@@ -34,3 +34,6 @@ results/*.csv
 *.aux
 *.log
 *.out
+
+# Jupyter
+.ipynb_checkpoints/
