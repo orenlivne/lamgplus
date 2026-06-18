@@ -1,0 +1,11 @@
+name = "DRAQCHybrid"
+uuid = "h9b71dca-0000-4b71-9dca-h9b71dcah9b7"
+authors = ["Oren E. Livne"]
+version = "0.1.0"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[compat]
+julia = "1.10"
