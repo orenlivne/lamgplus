@@ -153,14 +153,7 @@ function caliber2_interpolation(aggregate::AbstractVector{Int}, X::AbstractMatri
         i = rows[k]; i != j && (rmax[i] = max(rmax[i], abs(vals[k])))
     end
 
-    # smoothness weights ω_k = ‖x_k‖² / ‖A x_k‖²  (bias LS toward smooth TVs)
-    K = size(X, 2); ω = ones(Float64, K)
-    for k in 1:K
-        x = @view X[:, k]; Ax = A * x; nx = dot(x, x); nAx = dot(Ax, Ax)
-        ω[k] = nAx > 1e-30 ? nx / nAx : 1.0
-    end
-    ωm = sum(ω) / K; ωm > 0 && (ω ./= ωm)
-
+    K = size(X, 2)
     Ip = Int[]; Jp = Int[]; Vp = Float64[]; n_up = 0
     S = Int[]
     @inbounds for i in 1:n
@@ -180,7 +173,7 @@ function caliber2_interpolation(aggregate::AbstractVector{Int}, X::AbstractMatri
             den = 0.0; num = 0.0
             for k in 1:K
                 d = X[sa, k] - X[sb, k]
-                den += ω[k] * d * d; num += ω[k] * d * (X[i, k] - X[sb, k])
+                den += d * d; num += d * (X[i, k] - X[sb, k])
             end
             w = den > 1e-30 ? num / den : 1.0
             if w < 0 || w > 1                               # extrapolation → caliber-1
