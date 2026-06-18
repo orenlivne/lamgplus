@@ -53,6 +53,57 @@ function quality_ok_factor(AG::AbstractMatrix, XG::AbstractMatrix, κbar::Real)
 end
 
 """
+    zmatrix(A_G, X_G, κ̄) -> Z_G
+
+Dense `Z_G = κ̄ A_G − X_G(I − 1(1ᵀX_G1)⁻¹1ᵀX_G)` (eq. 14); symmetric, singular
+(null vector 1), nonneg-definite iff μ(G) ≤ κ̄.
+"""
+function zmatrix(AG::AbstractMatrix, XG::AbstractMatrix, κbar::Real)
+    ng = size(AG, 1); o = ones(ng); XGo = XG * o; s = dot(o, XGo)
+    return κbar .* Matrix(AG) .- (Matrix(XG) .- (XGo * XGo') ./ s)
+end
+
+"""
+    ldlt_negcurv(Z; tol=1e-10) -> (ok, w)
+
+LDLᵀ factorization of the leading `(n−1)` block of symmetric `Z`. Returns
+`(true, [])` if that block is positive definite (so `Z ⪰ 0`, i.e. μ(G) ≤ κ̄), else
+`(false, w)` where `w` is a direction of negative curvature (`wᵀ Z w < 0`) recovered
+from the breakdown pivot — the cheap byproduct the paper uses to split the aggregate
+(§4.3.2), in place of a full generalized eigensolve.
+"""
+function ldlt_negcurv(Z::AbstractMatrix; tol::Real=1e-10)
+    n = size(Z, 1); b = n - 1
+    L = Matrix{Float64}(I, n, n); d = zeros(n)
+    @inbounds for j in 1:b
+        s = Z[j, j]
+        for k in 1:j-1
+            s -= L[j, k] * L[j, k] * d[k]
+        end
+        if s <= tol * max(1.0, abs(Z[j, j]))
+            w = zeros(n); w[j] = 1.0                     # solve Lᵀ w = e_j (leading j)
+            for i in j-1:-1:1
+                acc = 0.0
+                for k in i+1:j
+                    acc += L[k, i] * w[k]
+                end
+                w[i] = -acc
+            end
+            return (false, w)
+        end
+        d[j] = s
+        for i in j+1:n
+            acc = Z[i, j]
+            for k in 1:j-1
+                acc -= L[i, k] * L[j, k] * d[k]
+            end
+            L[i, j] = acc / s
+        end
+    end
+    return (true, Float64[])
+end
+
+"""
     criterion16(A, G, root, δ, κ̄) -> Bool
 
 Cheap sufficient condition `μ(G) < κ̄` of Napov–Notay eq. 16:

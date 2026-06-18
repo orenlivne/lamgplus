@@ -157,8 +157,14 @@ function refine_aggregate!(A::SparseMatrixCSC, members::AbstractVector{<:Integer
             length(S) > 1024 && return copy(S)                       # crit 16 holds by construction
             criterion16_mf(A, S, rt, δ, inS, κbar) && return copy(S)
             AG, γ, XG = aggregate_quality_matrices(A, S, δ)          # dense path: small + rare
-            quality_ok_factor(AG, XG, κbar) && return copy(S)
-            Gp = subgroup_signsplit(A, S, rt, δ)
+            Z = zmatrix(AG, XG, κbar)
+            ok, w = ldlt_negcurv(Z)
+            ok && return copy(S)                                    # μ(G) ≤ κ̄
+            # split on the negative-curvature vector v = w + α1 (1ᵀX_G v = 0), §4.3.2
+            ng = length(S); o = ones(ng); XGo = XG * o
+            α = -dot(XGo, w) / dot(o, XGo); v = w .+ α
+            rloc = findfirst(==(rt), S); posroot = v[rloc] >= 0
+            Gp = [S[p] for p in 1:ng if (v[p] >= 0) == posroot]
             new = subgroup_extract(A, S, Gp, rt, δ; κbar=κbar, η=η + 0.5)
             length(new) >= length(S) && return copy(S)               # no progress
             ns = Set(new)
