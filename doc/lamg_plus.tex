@@ -27,7 +27,7 @@ citation graphs, LAMG+ on finite-element/structural matrices (where it is the fa
 and the most memory-frugal) and $2.2\times$ faster than the robust AC variant on large
 graphs. LAMG+ and AC are the only solvers that converge across all 13 test classes, while BoomerAMG, PETSc, pyAMG, and CMG each slow by an order of magnitude or fail to converge off their home turf. (2)
 \emph{Linear scaling}: LAMG+ is empirically $\Om$ over the full $1{,}711$-graph SuiteSparse set
-($100\%$ converged, median $4$ cycles, log--log slope $1.01$), verified to $2.4\!\times\!10^8$. (3)
+($100\%$ converged, median $4$ cycles, log--log slope $1.01$), verified to $2.4\!\times\!10^8$ nonzeros. (3)
 \emph{Robustness}: the original MATLAB LAMG was reported non-convergent across the
 AC benchmark's test families, yet the \emph{unmodified} LAMG~2.2.1, run on those
 families with the benchmark's own solver call, converges on every one---as does LAMG+,
@@ -82,7 +82,7 @@ small separators---is memory-prohibitive.
 successors \cite{kelner-stoc} build spectral sparsifiers as preconditioners, achieving
 for any SDD system a provably near-linear $\mathcal{O}(m\,\mathrm{polylog}\,n\cdot\log(1/\varepsilon))$ bound. The hidden constants are large; the fast practical realization is the
 approximate-Cholesky (approxChol) solver \cite{kelner-stoc,laplacians}, recently made
-substantially more robust by Gao, Kyng, and Spielman \cite{gks2023}, and paralleled by randomized-Cholesky direct
+substantially more robust by Gao, Kyng, and Spielman (GKS) \cite{gks2023}, and paralleled by randomized-Cholesky direct
 solvers such as RCHOL \cite{rchol}. We benchmark against both approxChol variants as
 our strongest near-linear baselines (\S\ref{sec:compete}).
 
@@ -121,18 +121,17 @@ including all scripts to reproduce the experiments in this paper: \url{https://g
 original MATLAB reference, App.~\ref{sec:valid}) that we use to establish three things.
 \begin{itemize}[leftmargin=1.4em,itemsep=1pt]
 \item \emph{A fair, same-language adjudication against the modern near-linear champion}
-(\S\ref{sec:compete}). LAMG (2012) predates and was never compared with Spielman's approxi\-mate-Cholesky
+(\S\ref{sec:compete}). LAMG (2012) predates and was never compared with GKS's approxi\-mate-Cholesky
 line \cite{laplacians,gks2023}, now the dominant practical near-linear solver.
 Run in the same Julia process, the two are \emph{complementary peers}: approxChol is
 faster on social/citation graphs, LAMG+ on FE/structural matrices (the fastest robust solver there,
 $2.2\times$ over the robust AC variant on large graphs). The split is algorithmic
 (coarsening vs.\ fill), not a compiler artifact.
 \item \emph{Linear scaling at scale} (\S\ref{sec:scaling}). LAMG+ is empirically $\Om$ over
-$1{,}711$ SuiteSparse graphs---$100\%$ converged, median $4$ cycles, log--log slope $1.01$ up to $2.3\!\times\!10^8$ edges (twice larger than LAMG's original demonstration) with no tuning.
+$1{,}711$ SuiteSparse graphs---$100\%$ converged, median $4$ cycles, log--log slope $1.01$ up to $2.4\!\times\!10^8$ nonzeros (twice larger than LAMG's original demonstration) with no tuning.
 \item \emph{Robustness, closing LAMG's outlier tail} (\S\S\ref{sec:choices},\,\ref{sec:families}).
 Where the original MATLAB LAMG was reported by \cite{gks2023} as non-convergent across the benchmark's
-test families, we run the \emph{unmodified} LAMG~2.2.1 on those families (regenerated from Spielman's own
-\texttt{Laplacians.jl}) with the benchmark's exact solver call and find it converges on every one, as does our
+test families, we run the \emph{unmodified} LAMG~2.2.1 on those families (regenerated from GKS's released code) with the benchmark's exact solver call and find it converges on every one, as does our
 re-derivation to the $10^{-8}$ tolerance (Table~\ref{tab:lamgorig})---placing the reported failure
 in the evaluation, not the algorithm.
 Additionally, two lean, \emph{local} refinements---a strength-of-connection veto and a selective caliber-2
@@ -590,9 +589,9 @@ cheap local statistic exposes, so the principled one-statistic rule is also the 
 black-box library can apply it directly---dispatch to LAMG+ when $\bar d\gtrsim30$ and to
 approximate-Cholesky otherwise---to pick the faster solver per input at no measurement cost.
 
-\subsection{Robustness across Spielman's test families}\label{sec:families}
+\subsection{Robustness across the GKS test families}\label{sec:families}
 The crossover above is a speed result; robustness---converging at all---is a separate axis, and the
-one on which graph-Laplacian solvers most often differ. Gao, Kyng, and Spielman \cite{gks2023}
+one on which graph-Laplacian solvers most often differ. Gao, Kyng, and Spielman (GKS) \cite{gks2023}
 report AC as the only solver in their study (alongside CMG, hypre/BoomerAMG, PETSc, and ICC) to
 converge across their full family set---random \texttt{chimera} graphs and randomly-weighted
 variants, SDDM ``chimeras'', adversarial ``Sachdeva stars'', an SPE benchmark, and
@@ -601,7 +600,7 @@ near-linear baseline worth a same-machine comparison.
 
 LAMG+ meets the same bar. With the standard right-hand side ($b=L\,x_{\mathrm{true}}$, zero-mean), it
 converges at both $\varepsilon=10^{-8}$ and $\varepsilon=10^{-4}$ on every one of the benchmark's families generated by
-Spielman's own \texttt{Laplacians.jl}: \texttt{chimera}s and their weighted, uniform, and
+GKS's own \texttt{Laplacians.jl}: \texttt{chimera}s and their weighted, uniform, and
 semi-weighted variants ($96$ graphs, $n=10^4$ to $10^6$), SDDM chimeras ($12$), $3$-D Poisson grids
 with uniform, anisotropic, and high-contrast coefficients ($12$), and Sachdeva-style stars ($3$). It
 also converges on the benchmark's one \emph{external} family, the SPE fluid dataset: we reconstruct
@@ -616,25 +615,17 @@ median of $4$ cycles. The original MATLAB LAMG was reported non-convergent on al
 \emph{unmodified} LAMG~2.2.1---under GNU Octave (compatibility shims only; the multigrid algorithm,
 setup, and MEX kernels unchanged), with \cite{gks2023}'s exact solver call
 (\texttt{setup(`laplacian',$\cdot$)}, \texttt{errorReductionTol}$=10^{-8}$, default cycle cap)---on the
-same families converges on \emph{every} one (Table~\ref{tab:lamgorig}; residuals
-$\le3.2\times10^{-8}$---2.2.1's stopping test reduces the error norm rather than the residual), as does
+same families converges on every one (Table~\ref{tab:lamgorig}), as does
 LAMG+, in as few or fewer cycles and to a strict $10^{-8}$ residual. The reported failure is therefore an artifact of the original evaluation, not the
-solver; consistent with this, our Julia re-derivation matches the original's design (\S\ref{sec:alg}) line
-by line and likewise converges on all of them. (We do not reproduce the original evaluation's failure
-mechanism; we only establish that the algorithm and its 2.2.1 code converge on these inputs.)
+solver. (We could not reproduce the original evaluation's failure mechanism.)
 
 % Table generated by scripts/gks_family_compare_table.jl (see doc/gks_compare_table.tex); regenerate, don't hand-edit.
 \begin{table}[t]\centering
-\caption{The original MATLAB LAMG 2.2.1 vs.\ LAMG+ on the families of Spielman's
-approximate-Cholesky benchmark \cite{gks2023}, \emph{same graph and right-hand side}. Each
-family is generated by Spielman's own \texttt{Laplacians.jl}; LAMG 2.2.1 is run under GNU
-Octave (compatibility shims only---multigrid algorithm and MEX kernels unchanged) with
-gks2023's exact solver call (\texttt{setup(`laplacian',$\cdot$)}, \texttt{errorReductionTol}$=10^{-8}$,
-default cycle cap). Although \cite{gks2023} report LAMG as non-convergent across all of these
-families, the unmodified 2.2.1 in fact converges on \emph{every} one; LAMG+ reaches a strict
+\caption{The original MATLAB LAMG 2.2.1 vs.\ LAMG+ on the families of Gao-Kyng-Spielman (GKS)
+approximate-Cholesky benchmark \cite{gks2023}, \emph{same graph and right-hand side}. Both LAMG and LAMG+ converge for all instances. LAMG+ reaches a strict
 $10^{-8}$ residual in as few or fewer cycles. ``cyc''~=~multigrid cycles; relres~=~$\|L\phi-b\|/\|b\|$ at
 termination. (LAMG 2.2.1's \texttt{errorReductionTol} test targets the error norm, so its residual
-lands within a small factor of $10^{-8}$---e.g.\ $3.2\!\times\!10^{-8}$ for uniform-weight chimera.)}
+lands within a small factor of $10^{-8}$, e.g.,\, $3.2\!\times\!10^{-8}$ for uniform-weight chimera.)}
 \label{tab:lamgorig}
 \footnotesize\setlength{\tabcolsep}{4pt}%
 \begin{tabular}{l r r r r r r}
@@ -662,7 +653,7 @@ SPE10 (reservoir) & 264,000 & 773,200 & 11 & $4.8\!\times\!10^{-9}$ & 8 & $6.9\!
 Our first-hand results corroborate the central finding of \cite{gks2023}: BoomerAMG, CMG, pyAMG,
 and PETSc GAMG each fail to converge or slow by an order of magnitude on chimera, SDDM-chimera, or
 adversarial-star instances (Table~\ref{tab:classcomp}); the present comparison adds LAMG+ as the
-only second solver, alongside AC, that is robust across all twelve families. On these well-structured families approxChol is faster---bounded degrees and separators
+only other solver, alongside AC, that is robust across all twelve families. On these well-structured families approxChol is faster---bounded degrees and separators
 suit its sampled elimination---while LAMG+'s advantage is on large poorly-separable graphs.
 
 \subsection{Lower accuracy shifts the balance toward LAMG+}\label{sec:tol4}
@@ -729,7 +720,7 @@ caliber-2 (default on) & grid-aligned anisotropy & ceiling $0.46\!\to\!0.11$; $1
 \section{Conclusion}\label{sec:conclusion}
 LAMG+ is a lean, parameter-free, empirically linear-time graph-Laplacian solver. It reproduces LAMG's choices, plus two targeted, \emph{local} refinements (\S\ref{sec:choices})---a
 strength-of-connection veto and a selective caliber-2 interpolation. LAMG+ works for structured, web, social, citation, collaboration, road, and
-grid-aligned anisotropic graphs with no per-graph tuning, and on every family of Spielman's
+grid-aligned anisotropic graphs with no per-graph tuning, and on every family of GKS's
 approximate-Cholesky benchmark \cite{gks2023} without fail. LAMG+ and approximate-Cholesky are peers with complementary strengths---approximate-Cholesky faster on
 social and citation graphs, LAMG+ the fastest and most memory-frugal solver on
 finite-element/structural matrices. Beyond the linear solver, the multilevel hierarchy could be used
