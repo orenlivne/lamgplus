@@ -46,13 +46,14 @@ function draqc_partition(A::SparseMatrixCSC; κbar::Real=10.0, maxdepth::Int=4)
 
     aggregated = falses(n)
     agg = zeros(Int, n)
+    inS = falses(n); scratch = Int[]          # reusable buffers for matrix-free QC
     nc = 0
     nleft = n
     while nleft > 0
         for r in order
             aggregated[r] && continue
             G = form_tentative(A, r, aggregated)
-            G = refine_aggregate(A, G, r, δ; κbar = κbar, maxdepth = maxdepth)
+            G = refine_aggregate!(A, G, r, δ, inS, scratch; κbar = κbar, maxdepth = maxdepth)
             nc += 1
             for v in G
                 aggregated[v] = true; agg[v] = nc

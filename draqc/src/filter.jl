@@ -3,35 +3,84 @@
 #
 # κ̄ (kappa-bar) = quality threshold (paper default 10); η = security factor (=2).
 
+# --- Matrix-free quality kernels -------------------------------------------------
+# These scan the sparse rows of A directly using a membership flag `inS` (a length-n
+# Bool buffer, true exactly for the current aggregate), computing the per-vertex
+# external/internal weight sums and root coupling without ever forming a dense
+# subgraph matrix. This is the allocation-critical inner loop (hub aggregates can
+# hold thousands of vertices; a dense |G|×|G| per sweep is fatal).
+
+"""
+    bad_vertex_removal_core!(A, S, root, δ, inS, scratch; κbar, η) -> S
+
+In-place, matrix-free bad-vertex removal (§4.3.1). Assumes `inS[v]` is `true`
+exactly for `v ∈ S` on entry; mutates `S` (shrinks it) and `inS` (clears removed
+vertices) so both stay consistent. `scratch` is a reusable `Vector{Int}`.
+"""
+function bad_vertex_removal_core!(A::SparseMatrixCSC, S::Vector{Int}, root::Int,
+                                  δ::AbstractVector, inS::AbstractVector{Bool},
+                                  scratch::Vector{Int}; κbar::Real=10.0, η::Real=2.0)
+    rv = rowvals(A); nz = nonzeros(A)
+    c18 = κbar - 1; c19 = (κbar - 1) / η
+    while true
+        empty!(scratch)
+        ng = length(S)
+        smallenough = ng <= 1024
+        for j in S
+            j == root && continue
+            ext = 0.0; intd = 0.0; ajr = 0.0
+            @inbounds for idx in nzrange(A, j)
+                k = rv[idx]; k == j && continue
+                w = -nz[idx]
+                inS[k] ? (intd += w) : (ext += w)
+                k == root && (ajr = w)
+            end
+            num = 2 * ext + δ[j]
+            keep = (ajr > 0.0 && num <= c18 * ajr) || (smallenough && intd > 0.0 && num <= c19 * intd)
+            keep || push!(scratch, j)
+        end
+        isempty(scratch) && break
+        @inbounds for j in scratch; inS[j] = false; end
+        filter!(v -> inS[v], S)
+        length(S) <= 1 && break
+    end
+    return S
+end
+
+"""
+    criterion16_mf(A, S, root, δ, inS, κbar) -> Bool
+
+Matrix-free cheap quality criterion (eq. 16): `(2 Σ_{k∉S}|a_jk| + δ_j) ≤ (κ̄−1)|a_jr|`
+for every non-root `j`. Assumes `inS` marks `S`.
+"""
+function criterion16_mf(A::SparseMatrixCSC, S::Vector{Int}, root::Int,
+                        δ::AbstractVector, inS::AbstractVector{Bool}, κbar::Real)
+    rv = rowvals(A); nz = nonzeros(A); c = κbar - 1
+    for j in S
+        j == root && continue
+        ext = 0.0; ajr = 0.0
+        @inbounds for idx in nzrange(A, j)
+            k = rv[idx]; k == j && continue
+            w = -nz[idx]
+            inS[k] || (ext += w)
+            k == root && (ajr = w)
+        end
+        ajr <= 0.0 && return false
+        (2 * ext + δ[j]) > c * ajr && return false
+    end
+    return true
+end
+
 """
     bad_vertex_removal(A, members, root, δ; κbar=10.0, η=2.0) -> Vector{Int}
 
-Sweep the non-root vertices of tentative aggregate `members` (global indices),
-removing any vertex that satisfies neither keep-criterion (18) nor (19), and
-repeat until a full sweep removes nothing (§4.3.1). Sums are recomputed against
-the *current* membership each sweep. The root is always retained.
+Allocating convenience wrapper around `bad_vertex_removal_core!` (for tests).
 """
 function bad_vertex_removal(A::SparseMatrixCSC, members::AbstractVector{<:Integer},
                             root::Integer, δ::AbstractVector; κbar::Real=10.0, η::Real=2.0)
+    inS = falses(size(A, 1)); for v in members; inS[Int(v)] = true; end
     S = collect(Int, members)
-    while true
-        AG, ext = subgraph_laplacian(A, S)
-        rloc = findfirst(==(Int(root)), S)
-        ng = length(S)
-        remove = Int[]
-        for p in 1:ng
-            S[p] == root && continue
-            num = 2 * ext[p] + δ[S[p]]
-            ajr = -AG[p, rloc]                       # |a_{jr}| (0 if not adjacent)
-            keep18 = ajr > 0 && num <= (κbar - 1) * ajr
-            intp = AG[p, p]                          # internal degree Σ_{k∈S}|a_jk|
-            keep19 = (ng <= 1024) && intp > 0 && num <= ((κbar - 1) / η) * intp
-            (keep18 || keep19) || push!(remove, S[p])
-        end
-        isempty(remove) && break
-        S = setdiff(S, remove)
-        length(S) <= 1 && break
-    end
+    bad_vertex_removal_core!(A, S, Int(root), δ, inS, Int[]; κbar=κbar, η=η)
     return S
 end
 
@@ -85,30 +134,53 @@ function subgroup_extract(A::SparseMatrixCSC, members::AbstractVector{<:Integer}
 end
 
 """
+    refine_aggregate!(A, members, root, δ, inS, scratch; κbar=10.0, η0=2.0, maxdepth=8) -> Vector{Int}
+
+Full per-aggregate quality control (§4.5, Algorithm 3 inner loop), matrix-free and
+buffer-reusing: bad-vertex removal → cheap criterion 16 (matrix-free) → for small
+aggregates only, the eq.14 Cholesky test → on failure, subgroup extraction with
+η escalating by 0.5, then repeat. `inS` (length-n Bool) and `scratch` (`Vector{Int}`)
+are caller-owned reusable buffers; `inS` is left fully cleared on return. Returns the
+accepted aggregate (always containing the root).
+"""
+function refine_aggregate!(A::SparseMatrixCSC, members::AbstractVector{<:Integer},
+                           root::Integer, δ::AbstractVector, inS::AbstractVector{Bool},
+                           scratch::Vector{Int}; κbar::Real=10.0, η0::Real=2.0, maxdepth::Int=8)
+    rt = Int(root)
+    S = collect(Int, members)
+    for v in S; inS[v] = true; end
+    try
+        η = η0
+        for _ in 0:maxdepth
+            bad_vertex_removal_core!(A, S, rt, δ, inS, scratch; κbar=κbar, η=η)
+            length(S) <= 1 && return copy(S)
+            length(S) > 1024 && return copy(S)                       # crit 16 holds by construction
+            criterion16_mf(A, S, rt, δ, inS, κbar) && return copy(S)
+            AG, γ, XG = aggregate_quality_matrices(A, S, δ)          # dense path: small + rare
+            quality_ok_factor(AG, XG, κbar) && return copy(S)
+            Gp = subgroup_signsplit(A, S, rt, δ)
+            new = subgroup_extract(A, S, Gp, rt, δ; κbar=κbar, η=η + 0.5)
+            length(new) >= length(S) && return copy(S)               # no progress
+            ns = Set(new)
+            for v in S; (v in ns) || (inS[v] = false); end
+            empty!(S); append!(S, new)
+            η += 0.5
+        end
+        return copy(S)
+    finally
+        for v in members; inS[Int(v)] = false; end
+        for v in S; inS[v] = false; end
+    end
+end
+
+"""
     refine_aggregate(A, members, root, δ; κbar=10.0, η=2.0, maxdepth=4) -> Vector{Int}
 
-Full per-aggregate quality control (§4.5, Algorithm 3 inner loop): bad-vertex
-removal → quality test (cheap criterion 16, else the eq.14 Cholesky factorization
-for |G|≤1024) → on failure, subgroup extraction, then recurse. Returns the
-accepted aggregate (global indices), always containing the root.
+Allocating convenience wrapper around `refine_aggregate!` (for tests).
 """
 function refine_aggregate(A::SparseMatrixCSC, members::AbstractVector{<:Integer},
                           root::Integer, δ::AbstractVector;
                           κbar::Real=10.0, η::Real=2.0, maxdepth::Int=4)
-    S = bad_vertex_removal(A, members, root, δ; κbar=κbar, η=η)
-    length(S) <= 1 && return S
-    if length(S) > 1024
-        return S                                     # criterion 16 holds by construction
-    end
-    AG, γ, XG = aggregate_quality_matrices(A, S, δ)
-    if criterion16(A, S, root, δ, κbar) || quality_ok_factor(AG, XG, κbar)
-        return S
-    end
-    maxdepth <= 0 && return S
-    # subgroup extraction; per Algorithm 3 step 13 the security factor η grows by
-    # 0.5 each re-entry, making the keep criterion progressively more stringent.
-    Gp = subgroup_signsplit(A, S, root, δ)
-    new = subgroup_extract(A, S, Gp, root, δ; κbar=κbar, η=η + 0.5)
-    length(new) >= length(S) && return S             # no progress ⇒ stop
-    return refine_aggregate(A, new, root, δ; κbar=κbar, η=η + 0.5, maxdepth=maxdepth - 1)
+    inS = falses(size(A, 1))
+    return refine_aggregate!(A, members, root, δ, inS, Int[]; κbar=κbar, η0=η, maxdepth=maxdepth)
 end
