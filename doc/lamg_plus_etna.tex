@@ -576,11 +576,17 @@ The graph-Laplacian solver most closely related to LAMG is the degree-aware root
 with quality control (DRA-QC) of Napov and Notay \cite{napov-notay}: like LAMG it eliminates
 low-degree vertices and coarsens by aggregation, but it controls aggregate quality through a
 provable two-grid condition-number bound rather than an energy guard, and is reported $2$--$5\times$
-faster than the original LAMG on a large real-world test set. No public implementation exists and
-we were unable to obtain the authors' code; we therefore reimplemented DRA-QC faithfully from the
+faster than the original LAMG on a large real-world test set. No public implementation of this
+graph-Laplacian-specialized algorithm exists and we were unable to obtain the authors' code; we
+therefore reimplemented DRA-QC faithfully from the
 published description---validated against its published operator complexities and
 $15$--$30$-iteration range---and emphasize that \emph{all DRA-QC figures below are from this
-reimplementation}, not the original code, and should be read accordingly. All comparisons in this
+reimplementation}, not the original code, and should be read accordingly.
+(The production package AGMG~\cite{agmg} implements the \emph{general-purpose} quality-control
+aggregation with guaranteed convergence rate~\cite{napov-notay-2012}---the ``QC'' lineage from which
+DRA-QC descends---but its default coarsening is the general elliptic-PDE scheme, not the
+graph-Laplacian-specialized degree-aware rooted variant evaluated here; it is thus a relative of
+DRA-QC, not a public implementation of it.) All comparisons in this
 section are \emph{work per edge} (total floating-point operations divided by $m$), not wall-clock
 time, so they are independent of implementation quality. We ran all three robust near-linear
 solvers under identical build-once conditions over the full SuiteSparse corpus of \S\ref{sec:scaling}.
@@ -1013,6 +1019,10 @@ by smoothed aggregation for second and fourth order elliptic problems}, Computin
 1996.
 \bibitem{notay} Y.~Notay, \emph{An aggregation-based algebraic multigrid method}, ETNA
 \textbf{37}, 2010.
+\bibitem{agmg} Y.~Notay, \emph{AGMG software and documentation},
+\texttt{http://agmg.eu}.
+\bibitem{napov-notay-2012} A.~Napov and Y.~Notay, \emph{An algebraic multigrid method with
+guaranteed convergence rate}, SIAM J.\ Sci.\ Comput.\ \textbf{34}(2), 2012.
 \bibitem{napov-notay} A.~Napov and Y.~Notay, \emph{An efficient multigrid method for graph
 Laplacian systems}, ETNA \textbf{45}, 2016; and \emph{\ldots\ II: Robust aggregation}, SIAM J.\
 Sci.\ Comput.\ \textbf{39}(5), 2017.
