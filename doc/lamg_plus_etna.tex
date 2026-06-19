@@ -31,20 +31,19 @@ learning, finite-element analysis, and interior-point network-flow solvers. We p
 \emph{reproducible, same-machine study} of graph-Laplacian solvers centered on \textbf{LAMG+}---an open,
 parameter-free Julia re-derivation of Lean Algebraic Multigrid (LAMG) with two targeted robustness
 refinements---benchmarked under identical conditions against both approximate-Cholesky variants, the
-degree-aware aggregation of Napov and Notay, and four further state-of-the-art solvers. We establish three facts. (1)
-\emph{Fair, same-machine benchmarking} against both approximate-Cholesky (AC) variants---the modern
-near-linear champion---and four other state-of-the-art solvers (hypre/BoomerAMG, PETSc GAMG, pyAMG,
-CMG). LAMG+ and AC are \emph{complementary peers}: AC is faster on social and
+degree-aware aggregation of Napov and Notay, and five further solvers. Three findings emerge.
+First, \emph{same-machine benchmarking} against both approximate-Cholesky (AC) variants---the modern
+near-linear champion---and five further solvers (hypre/BoomerAMG, PETSc GAMG, pyAMG, CMG, CHOLMOD)
+shows LAMG+ and AC are \emph{complementary peers}: AC is faster on social and
 citation graphs, LAMG+ on finite-element/structural matrices (where it is the fastest robust solver
 and the most memory-frugal) and $2.2\times$ faster than the robust AC variant on large
-graphs. LAMG+ and AC are the only solvers that converge across all 13 test classes, while BoomerAMG, PETSc, pyAMG, and CMG each slow by an order of magnitude or fail to converge off their home turf. (2)
-\emph{Linear scaling}: LAMG+ is empirically $\Om$ over the full $1{,}711$-graph SuiteSparse set
-($100\%$ converged, median $4$ cycles, log--log slope $1.01$), verified to $2.4\!\times\!10^8$ nonzeros. (3)
-\emph{Robustness}: the original MATLAB LAMG was reported non-convergent across the
-AC benchmark's test families, yet the \emph{unmodified} LAMG~2.2.1, run on those
+graphs. LAMG+ and AC are the only solvers that converge across all 13 test classes, while BoomerAMG, PETSc, pyAMG, and CMG each slow by an order of magnitude or fail to converge off their home turf.
+Second, \emph{linear scaling}: LAMG+ is empirically $\Om$ over the full $1{,}711$-graph SuiteSparse set
+($100\%$ converged, median $4$ cycles, log--log slope $1.01$), verified to $2.4\!\times\!10^8$ nonzeros.
+Third, \emph{robustness}: the original MATLAB LAMG was reported non-convergent across the
+AC benchmark's test families, yet LAMG~2.2.1 (under GNU Octave; algorithm and MEX kernels unchanged), run on those
 families with the benchmark's own solver call, converges on every one---as does LAMG+,
-to their $10^{-8}$ tolerance---placing the reported failure in the evaluation, not the
-algorithm. The two refinements, a strength-of-connection aggregation veto and a selective caliber-2 interpolation, resolve LAMG's grid-aligned-anisotropy convergence failure (asymptotic convergence factor $\approx0.99\!\to\!0.11$). Both trigger locally and do not substantially increase the complexity. Code and benchmark scripts: \url{https://github.com/orenlivne/lamgplus}.
+to their $10^{-8}$ tolerance. The two refinements, a strength-of-connection aggregation veto and a selective caliber-2 interpolation, resolve LAMG's grid-aligned-anisotropy convergence failure (asymptotic convergence factor $\approx0.99\!\to\!0.11$). Both trigger locally and do not substantially increase the complexity. Code and benchmark scripts: \url{https://github.com/orenlivne/lamgplus}.
 \end{abstract}
 
 \begin{keywords}
@@ -143,9 +142,9 @@ $2.2\times$ over the robust AC variant on large graphs). The split is algorithmi
 $1{,}711$ SuiteSparse graphs---$100\%$ converged, median $4$ cycles, log--log slope $1.01$ up to $2.4\!\times\!10^8$ nonzeros (twice larger than LAMG's original demonstration) with no tuning.
 \item \emph{Robustness, closing LAMG's outlier tail} (\S\S\ref{sec:choices},\,\ref{sec:families}).
 Where the original MATLAB LAMG was reported by \cite{gks2023} as non-convergent across the benchmark's
-test families, we run the \emph{unmodified} LAMG~2.2.1 on those families (regenerated from GKS's released code) with the benchmark's exact solver call and find it converges on every one, as does our
-re-derivation to the $10^{-8}$ tolerance (Table~\ref{tab:lamgorig})---placing the reported failure
-in the evaluation, not the algorithm.
+test families, we run LAMG~2.2.1 (under GNU Octave; algorithm and MEX kernels unchanged) on those
+families with the benchmark's exact solver call and find it converges on every one, as does our
+re-derivation to the $10^{-8}$ tolerance (Table~\ref{tab:lamgorig}).
 Additionally, two lean, \emph{local} refinements---a strength-of-connection veto and a selective caliber-2
 interpolation---turn LAMG's stalled
 grid-aligned-anisotropy rate (Asymptotic Convergence Factor $(\acf)\approx0.99$) into $\approx0.11$ at $\!1\%$ median
@@ -364,8 +363,10 @@ isotropic grid $256^2$                     & $0\%$   & 0.016 (5) & 0.015 (5)\\
 
 \section{Numerical results}\label{sec:results}
 LAMG+ is implemented in Julia, and all reported times are wall-clock, measured on an Apple M5~Pro
-(18-core, 48~GB RAM); the competitor solvers of \S\ref{sec:compete} run in the same Julia process
-under identical compilation, so the wall-clock comparisons are language-fair.
+(18-core, 48~GB RAM). The Julia-native solvers (approxChol, AC, CHOLMOD via Julia wrappers) run
+in the same process under identical JIT compilation. The non-Julia solvers (pyAMG, BoomerAMG,
+PETSc GAMG, CMG) are invoked as subprocesses from the same harness; we report end-to-end
+wall-clock time including startup, matching the methodology of \cite{gks2023}.
 Throughout this section, every solve uses the right-hand side $b=L\,x_{\mathrm{true}}$ with
 $x_{\mathrm{true}}$ a standard-normal random vector projected to zero mean, and runs to
 $\varepsilon=\|b-L\,x\|/\|b\|\le10^{-8}$ unless a different $\varepsilon$ is stated.
@@ -436,8 +437,7 @@ setup$+$solve time gives the exponent $m^{1.01}$.}\label{fig:scaling}\end{figure
 We benchmark setup$+$solve to $\varepsilon=10^{-8}$ against both approximate-Cholesky
 variants: the original, faster \texttt{approxchol\_lap} (``approxChol'') \cite{laplacians}
 and the robust \texttt{approxchol\_lap2} (``AC'') of \cite{gks2023}, and note sparse
-Cholesky (CHOLMOD) \cite{davis-cholmod} for context.\end{sloppypar} All run in the same Julia process under identical
-compilation, so any difference is algorithmic (coarsening vs.\ fill), not a compiler artifact; we
+Cholesky (CHOLMOD) \cite{davis-cholmod} for context.\end{sloppypar} For these three Julia-native solvers, any timing difference is algorithmic (coarsening vs.\ fill), not a compiler artifact; we
 report time per nonzero ($\mu$s/nnz, the worst-case metric of \cite{gks2023}), each a warm timed run
 (a warm-up call first excludes Julia's one-time JIT compilation), measured serially so the per-graph
 rows and the aggregate below are contention-free and mutually consistent.
@@ -571,32 +571,34 @@ The graph-Laplacian solver most closely related to LAMG is the degree-aware root
 with quality control (DRA-QC) of Napov and Notay \cite{napov-notay}: like LAMG it eliminates
 low-degree vertices and coarsens by aggregation, but it controls aggregate quality through a
 provable two-grid condition-number bound rather than an energy guard, and is reported $2$--$5\times$
-faster than the original LAMG on a large real-world test set. No implementation of the DRA-QC
-variant is publicly distributed and we were unable to obtain the authors' code; we therefore
-reimplemented it faithfully---validated to reproduce its published operator complexities and
+faster than the original LAMG on a large real-world test set. No public implementation exists and
+we were unable to obtain the authors' code; we therefore reimplemented DRA-QC faithfully from the
+published description---validated against its published operator complexities and
 $15$--$30$-iteration range---and emphasize that \emph{all DRA-QC figures below are from this
-reimplementation}, not the original. We ran all three robust
-near-linear solvers under identical build-once conditions over the full SuiteSparse corpus of
-\S\ref{sec:scaling}.
+reimplementation}, not the original code, and should be read accordingly. All comparisons in this
+section are \emph{work per edge} (total floating-point operations divided by $m$), not wall-clock
+time, so they are independent of implementation quality. We ran all three robust near-linear
+solvers under identical build-once conditions over the full SuiteSparse corpus of \S\ref{sec:scaling}.
 
-All three are robust---each converges on $>99.7\%$ of the corpus (Table~\ref{tab:draqc})---but
-LAMG+ is the only one that converges on \emph{every} graph, and with the tightest tail (at most
-$27$ cycles, versus $77$ for approxChol and $277$ for DRA-QC); the stragglers are
-anisotropy/Darcy/thermal matrices for DRA-QC and a single chemical-process matrix for approxChol.
-Measured in work per edge (the identical operation count for LAMG+ and our DRA-QC reimplementation),
+All three are robust: each converges on over $99.7\%$ of the corpus
+(Table~\ref{tab:draqc}). LAMG+ is the only one that converges on \emph{every} graph, with the
+tightest tail (at most $27$ cycles; approxChol reaches $77$). DRA-QC's tail is wider on
+anisotropic/Darcy/thermal matrices---an expected consequence of aggregation-only coarsening without
+a caliber-2 fix---though the one extreme outlier in Table~\ref{tab:draqc} should be interpreted
+cautiously given that it comes from our reimplementation. Measured in work per edge,
 the two are \emph{complementary}: DRA-QC's leaner cycle does \emph{less} total work than LAMG+ on the
-typical graph (median ratio $0.68$), but over $3\times$ on the $11\%$ of graphs with grid-aligned
-anisotropy or high contrast (up to $55\times$), where aggregation-only coarsening lacks LAMG+'s
-caliber-2 fix, while LAMG+'s worst-case work stays bounded. DRA-QC is thus a strong competitor with
-a complementary cost profile---robust on real-world graphs with a proven bound---but without LAMG+'s
-uniform convergence and bounded tail.
+typical graph (median ratio $0.68$), but substantially more on the $11\%$ of graphs with grid-aligned
+anisotropy or high contrast (up to $55\times$), while LAMG+'s worst-case work stays bounded.
+DRA-QC is a strong competitor with a complementary cost profile and a proven two-grid bound.
 
 \begin{table}[t]\centering
 \caption{Robustness over the full SuiteSparse corpus (build the hierarchy once, solve to
 $10^{-8}$): fraction of graphs converged and the per-graph iteration distribution. LAMG+
 caliber-2 is the only solver convergent on every graph and has the tightest tail. ``it''~=~cycles
-(LAMG+), PCG iterations (approxChol), or K-cycle iterations (DRA-QC, our faithful
-reimplementation, as no public code exists).}\label{tab:draqc}
+(LAMG+), PCG iterations (approxChol), or K-cycle iterations (DRA-QC---our faithful
+reimplementation; the tail reflects an aggregation-only method's known anisotropy limitation
+and should be read with the usual caveat that reimplementation outliers may not reflect the
+original code).}\label{tab:draqc}
 \begin{tabular}{lrrrrr}
 \toprule
 Solver & converged & median it & p99 it & max it & \#fail\\
@@ -638,7 +640,10 @@ further a-priori features of the degree distribution---median, maximum, $90$th/$
 standard deviation, coefficient of variation, skewness, hub ratio $\max/\bar d$, and the leaf- and
 high-degree fractions, all computable before any solve. Under repeated stratified $5$-fold
 cross-validation ($20$ repeats; a single $80/20$ split is too small to be stable at $n{=}201$) it
-attains $89\pm4\%$---no better than the one-line $\bar d$ threshold ($91\%$); permutation importance concentrates almost entirely on $\bar d$, every other feature contributing $\le0.01$. The degree distribution thus carries no
+attains $89\pm4\%$ (cross-validated)---no better than the one-line $\bar d$ threshold; note that
+the $91\%$ for the threshold is in-sample (both chosen and evaluated on the same $201$ graphs),
+so the two numbers are not directly comparable, but the permutation importance concentrates almost
+entirely on $\bar d$, every other feature contributing $\le0.01$. The degree distribution thus carries no
 a-priori signal beyond its mean; the residual $9\%$ is governed by separability, a global property no
 cheap local statistic exposes, so the principled one-statistic rule is also the near-optimal one. A
 black-box library can apply it directly---dispatch to LAMG+ when $\bar d\gtrsim30$ and to
@@ -666,18 +671,17 @@ $5$ cycles. Extending \emph{past} the scale at which AC was benchmarked, it furt
 SuiteSparse graphs up to \texttt{com-Orkut} ($1.2\times10^8$ edges, $2.4\times10^8$ nonzeros).
 Together with the $1{,}711$-graph scaling set (\S\ref{sec:scaling}), every instance converges, in a
 median of $4$ cycles. The original MATLAB LAMG was reported non-convergent on all matrices of this set
-\cite{gks2023}. This is not a property of the algorithm or of its original code: running the
-\emph{unmodified} LAMG~2.2.1---under GNU Octave (compatibility shims only; the multigrid algorithm,
-setup, and MEX kernels unchanged), with \cite{gks2023}'s exact solver call
-(\texttt{setup(`laplacian',$\cdot$)}, \texttt{errorReductionTol}$=10^{-8}$, default cycle cap)---on the
-same families converges on every one (Table~\ref{tab:lamgorig}), as does
-LAMG+, in as few or fewer cycles and to a strict $10^{-8}$ residual. The reported failure is therefore an artifact of the original evaluation, not the
-solver. (We could not reproduce the original evaluation's failure mechanism.)
+\cite{gks2023}. We ran LAMG~2.2.1 under GNU Octave (compatibility shims only; the multigrid
+algorithm, setup, and MEX kernels are unchanged) with \cite{gks2023}'s exact solver call
+(\texttt{setup(`laplacian',$\cdot$)}, \texttt{errorReductionTol}$=10^{-8}$, default cycle cap) on the
+same families and find it converges on every one (Table~\ref{tab:lamgorig}), as does
+LAMG+, in as few or fewer cycles and to a strict $10^{-8}$ residual.
 
 % Table generated by scripts/gks_family_compare_table.jl (see doc/gks_compare_table.tex); regenerate, don't hand-edit.
 \begin{table}[t]\centering
-\caption{The original MATLAB LAMG 2.2.1 vs.\ LAMG+ on the families of Gao-Kyng-Spielman (GKS)
-approximate-Cholesky benchmark \cite{gks2023}, \emph{same graph and right-hand side}. Both LAMG and LAMG+ converge for all instances. LAMG+ reaches a strict
+\caption{LAMG~2.2.1 (run under GNU Octave; algorithm and MEX kernels unchanged) vs.\ LAMG+ on the
+families of the Gao-Kyng-Spielman (GKS) benchmark \cite{gks2023}, \emph{same graph and right-hand side}.
+Both converge on every instance. LAMG+ reaches a strict
 $10^{-8}$ residual in as few or fewer cycles. ``cyc''~=~multigrid cycles; relres~=~$\|L\phi-b\|/\|b\|$ at
 termination. (LAMG 2.2.1's \texttt{errorReductionTol} test targets the error norm, so its residual
 lands within a small factor of $10^{-8}$, e.g.,\, $3.2\!\times\!10^{-8}$ for uniform-weight chimera.)}
