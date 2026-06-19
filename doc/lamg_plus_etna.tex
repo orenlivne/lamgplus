@@ -365,8 +365,10 @@ isotropic grid $256^2$                     & $0\%$   & 0.016 (5) & 0.015 (5)\\
 LAMG+ is implemented in Julia, and all reported times are wall-clock, measured on an Apple M5~Pro
 (18-core, 48~GB RAM). The Julia-native solvers (approxChol, AC, CHOLMOD via Julia wrappers) run
 in the same process under identical JIT compilation. The non-Julia solvers (pyAMG, BoomerAMG,
-PETSc GAMG, CMG) are invoked as subprocesses from the same harness; we report end-to-end
-wall-clock time including startup, matching the methodology of \cite{gks2023}.
+PETSc GAMG, CMG) are invoked as subprocesses through their native libraries, but each is timed
+\emph{internally}---after a warm-up call, excluding interpreter and library startup---so every
+solver's reported number is the same quantity, setup$+$solve, with wall-clock as the comparison
+metric used by \cite{gks2023}.
 Throughout this section, every solve uses the right-hand side $b=L\,x_{\mathrm{true}}$ with
 $x_{\mathrm{true}}$ a standard-normal random vector projected to zero mean, and runs to
 $\varepsilon=\|b-L\,x\|/\|b\|\le10^{-8}$ unless a different $\varepsilon$ is stated.
