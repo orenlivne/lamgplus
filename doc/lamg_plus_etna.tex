@@ -1,19 +1,29 @@
-\documentclass[review]{siamart220329}
-% siamart220329 already loads hyperref, xcolor, algorithm; graphicx is NOT loaded.
+\documentclass[leqno,letterpaper]{etna}
 \usepackage{amsmath,amssymb,booktabs,graphicx,enumitem,rotating,array}
+\setlength{\emergencystretch}{1em}
 \newcommand{\Om}{\mathcal{O}(m)}
 \newcommand{\Oone}{\mathcal{O}(1)}
 \newcommand{\acf}{\mathrm{ACF}}
 \newcommand{\R}{\mathbb{R}}
-\hypersetup{colorlinks=true,allcolors=blue!55!black}
-\setlength{\emergencystretch}{1em}
 
-\title{A Reproducible Same-Machine Comparison of Graph-Laplacian Solvers, with Two Robustness Refinements to Lean Algebraic Multigrid\thanks{Submitted to the editors \today.}}
-\author{Oren E. Livne\thanks{Pine Birch Analytics, 35 Kelinger Rd, Churchville, PA 18966-1033 (\texttt{oren.livne@gmail.com}, tel.\ 312-533-9130, \texttt{pinebirchanalytics.com}; ORCID: \href{https://orcid.org/0000-0001-6700-483X}{0000-0001-6700-483X}).}}
-\headers{LAMG+: a robust lean algebraic multigrid}{O. E. Livne}
+\title{A Reproducible Same-Machine Comparison of Graph-Laplacian Solvers,
+  with Two Robustness Refinements to Lean Algebraic Multigrid\thanks{%
+  Received \today. Accepted \ldots. Published online on \ldots.
+  Recommended by \ldots.}}
+
+\author{Oren E.~Livne\footnotemark[2]}
+
+\shorttitle{LAMG+: A ROBUST LEAN ALGEBRAIC MULTIGRID}
+\shortauthor{O.~E.~LIVNE}
 
 \begin{document}
 \maketitle
+
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\footnotetext[2]{Pine Birch Analytics, 35 Kelinger Rd, Churchville,
+  PA~18966-1033 (\texttt{oren.livne@gmail.com},
+  \texttt{pinebirchanalytics.com};
+  ORCID: \href{https://orcid.org/0000-0001-6700-483X}{0000-0001-6700-483X}).}
 
 \begin{abstract}
 Graph-Laplacian systems $L\phi=b$ where $L$ is sparse with $m$ nonzeros underlie spectral clustering, centrality, semi-supervised
@@ -422,10 +432,11 @@ means per-edge cost is independent of $m$ --- the empirical $\Om$ statement; the
 setup$+$solve time gives the exponent $m^{1.01}$.}\label{fig:scaling}\end{figure}
 
 \subsection{Comparison: complementary strengths by class}\label{sec:compete}
+\begin{sloppypar}
 We benchmark setup$+$solve to $\varepsilon=10^{-8}$ against both approximate-Cholesky
-variants---the original, faster \texttt{approxchol\_lap} (``approxChol'') \cite{laplacians} and the
-robust \texttt{approxchol\_lap2} (``AC'') of \cite{gks2023}, and note sparse Cholesky
-(CHOLMOD) \cite{davis-cholmod} for context. All run in the same Julia process under identical
+variants: the original, faster \texttt{approxchol\_lap} (``approxChol'') \cite{laplacians}
+and the robust \texttt{approxchol\_lap2} (``AC'') of \cite{gks2023}, and note sparse
+Cholesky (CHOLMOD) \cite{davis-cholmod} for context.\end{sloppypar} All run in the same Julia process under identical
 compilation, so any difference is algorithmic (coarsening vs.\ fill), not a compiler artifact; we
 report time per nonzero ($\mu$s/nnz, the worst-case metric of \cite{gks2023}), each a warm timed run
 (a warm-up call first excludes Julia's one-time JIT compilation), measured serially so the per-graph
