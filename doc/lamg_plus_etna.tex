@@ -117,8 +117,8 @@ than the irregular degree distributions of graph Laplacians. In the broadest rec
 \cite{gks2023}, CMG, BoomerAMG, and PETSc all failed to converge across the chimera and SDDM
 families, leaving the approximate-elimination solver AC (the \texttt{approxchol\_lap2} variant)
 the only blackbox method robust across all of them; the original MATLAB LAMG was reported
-non-convergent there, whereas our independent re-derivation converges on those families
-(\S\ref{sec:families})---a failure specific to that evaluation, not the algorithm. We thus consider
+non-convergent there, whereas both LAMG~2.2.1 (under GNU Octave) and our independent re-derivation
+converge on those families (\S\ref{sec:families}). We thus consider
 approxChol as our sole robust near-linear baseline, with CHOLMOD for the
 direct-method crossover. We also compare with the other AMG solvers for the specific graph classes they converge on.
 
@@ -129,7 +129,7 @@ solution---by regulating the coarse-operator \emph{energy} rather than aggregate
 \textbf{LAMG+}: an open re-derivation of the algorithm\footnote{Open-source Julia implementation,
 including all scripts to reproduce the experiments in this paper: \url{https://github.com/orenlivne/lamgplus}.}
 (validated line-by-line against the
-original MATLAB reference) that we use to establish three things.
+original MATLAB reference) that we use to establish four things.
 \begin{itemize}[leftmargin=1.4em,itemsep=1pt]
 \item \emph{A fair, same-language adjudication against the modern near-linear champion}
 (\S\ref{sec:compete}). LAMG (2012) predates and was never compared with GKS's approxi\-mate-Cholesky
