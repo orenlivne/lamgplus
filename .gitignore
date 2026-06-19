@@ -40,3 +40,4 @@ results/*.csv
 # Jupyter
 .ipynb_checkpoints/
 results/gks_cmp/
+*.thm
