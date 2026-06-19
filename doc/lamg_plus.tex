@@ -92,7 +92,7 @@ AMG \cite{vanek-mandel-brezina,notay} groups fine nodes into aggregates. AMG exc
 discretized PDEs but its complexity is hard to control on general graphs: coarse operators
 densify on scale-free hubs, and higher-order interpolation makes this worse. A line of work
 targets graph Laplacians specifically: Napov and Notay's degree-aware rooted aggregation with
-aggregate-quality control \cite{napov-notay}, matching-based multilevel preconditioners
+aggregate-quality control \cite{napov-notay} (the closest competitor, benchmarked in \S\ref{sec:draqc}), matching-based multilevel preconditioners
 \cite{brannick-match}, and effective-resistance/diffusion-distance coarsening with
 least-squares interpolation from relaxed vectors \cite{lee2024}---the last closely related to
 LAMG's affinity. Bootstrap AMG \cite{brandt-bootstrap} and algebraic distance
@@ -549,6 +549,46 @@ bone010 (FE, $2.3\!\times\!10^7$) & \textbf{30} & 43 & 55\\
 flickr (social)            & 80 & \textbf{40} & 53\\
 coPapersDBLP (citation)    & 49 & \textbf{32} & 32\\
 web-Stanford (web)         & 62 & \textbf{32} & 32\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{The closest competitor: degree-aware aggregation}\label{sec:draqc}
+The graph-Laplacian solver most closely related to LAMG is the degree-aware rooted aggregation
+with quality control (DRA-QC) of Napov and Notay \cite{napov-notay}: like LAMG it eliminates
+low-degree vertices and coarsens by aggregation, but it controls aggregate quality through a
+provable two-grid condition-number bound rather than an energy guard, and is reported $2$--$5\times$
+faster than the original LAMG on a large real-world test set. No implementation of the DRA-QC
+variant is publicly distributed; we therefore reimplemented it faithfully (validated to reproduce
+its published operator complexities and $15$--$30$-iteration range) and ran all three robust
+near-linear solvers under identical build-once conditions over the full SuiteSparse corpus of
+\S\ref{sec:scaling}.
+
+All three are robust---each converges on $>99.7\%$ of the corpus (Table~\ref{tab:draqc})---but
+LAMG+ is the only one that converges on \emph{every} graph, and with the tightest tail (at most
+$27$ cycles, versus $77$ for approxChol and $277$ for DRA-QC); the stragglers are
+anisotropy/Darcy/thermal matrices for DRA-QC and a single chemical-process matrix for approxChol.
+Measured in work per edge (the identical operation count for LAMG+ and our DRA-QC reimplementation),
+the two are \emph{complementary}: DRA-QC's leaner cycle does \emph{less} total work than LAMG+ on the
+typical graph (median ratio $0.68$), but over $3\times$ on the $11\%$ of graphs with grid-aligned
+anisotropy or high contrast (up to $55\times$), where aggregation-only coarsening lacks LAMG+'s
+caliber-2 fix, while LAMG+'s worst-case work stays bounded. DRA-QC is thus a strong competitor with
+a complementary cost profile---robust on real-world graphs with a proven bound---but without LAMG+'s
+uniform convergence and bounded tail.
+
+\begin{table}[t]\centering
+\caption{Robustness over the full SuiteSparse corpus (build the hierarchy once, solve to
+$10^{-8}$): fraction of graphs converged and the per-graph iteration distribution. LAMG+
+caliber-2 is the only solver convergent on every graph and has the tightest tail. ``it''~=~cycles
+(LAMG+), PCG iterations (approxChol), or K-cycle iterations (DRA-QC, our faithful
+reimplementation, as no public code exists).}\label{tab:draqc}
+\begin{tabular}{lrrrrr}
+\toprule
+Solver & converged & median it & p99 it & max it & \#fail\\
+\midrule
+LAMG+ (caliber-2)         & \textbf{100.0\%} & 4  & 9  & \textbf{27}  & 0\\
+approxChol \cite{gks2023} & 99.9\%           & 15 & 37 & 77           & 1\\
+DRA-QC \cite{napov-notay} & 99.8\%           & 13 & 89 & 277          & 4\\
 \bottomrule
 \end{tabular}
 \end{table}
