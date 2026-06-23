@@ -1,6 +1,6 @@
 # Current caliber-2 LAMG+ over the ENTIRE corpus (refreshes the stale scaling_new.csv;
 # the 8 anisotropy/thermal/Darcy fails there predate caliber-2). Same conditions as the
-# DRA-QC and AC sweeps: build hierarchy once, solve L x = b to 1e-8.
+# AC sweep: build hierarchy once, solve L x = b to 1e-8.
 #   julia --project=examples/repro_env scripts/lamg_corpus_sweep.jl [corpusdir] [out.csv] [maxnnz]
 using LAMG, LinearAlgebra, SparseArrays, Random, Printf, Statistics
 include(joinpath(@__DIR__, "work_per_edge.jl"))   # lamg_work, read_mm_adj, lcc (driver guarded)

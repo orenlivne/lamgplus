@@ -27,12 +27,12 @@ citation graphs, LAMG+ on finite-element/structural matrices (where it is the fa
 and the most memory-frugal) and $2.2\times$ faster than the robust AC variant on large
 graphs. LAMG+ and AC are the only solvers that converge across all 13 test classes, while BoomerAMG, PETSc, pyAMG, and CMG each slow by an order of magnitude or fail to converge off their home turf. (2)
 \emph{Linear scaling}: LAMG+ is empirically $\Om$ over the full $1{,}711$-graph SuiteSparse set
-($100\%$ converged, median $4$ cycles, log--log slope $1.01$), verified to $2.4\!\times\!10^8$ nonzeros. (3)
+($100\%$ converged, median $4$ cycles, log--log slope $1.01$), verified up to $2.4\!\times\!10^8$ nonzeros. (3)
 \emph{Robustness}: the original MATLAB LAMG was reported non-convergent across the
 AC benchmark's test families, yet the \emph{unmodified} LAMG~2.2.1, run on those
 families with the benchmark's own solver call, converges on every one---as does LAMG+,
 to their $10^{-8}$ tolerance---placing the reported failure in the evaluation, not the
-algorithm. The two refinements, a strength-of-connection aggregation veto and a selective caliber-2 interpolation, resolve LAMG's grid-aligned-anisotropy convergence failure (asymptotic convergence factor $\approx0.99\!\to\!0.11$). Both trigger locally and do not substantially increase the complexity. Code and benchmark scripts: \url{https://github.com/orenlivne/lamgplus}.
+algorithm. Guided by a Local Fourier Analysis diagnosing a strict interpolation-order deficit on grid-aligned anisotropic operators (Appendix~A), we introduce two lean refinements: a strength-of-connection aggregation veto and a selective caliber-2 interpolation. Together, these mathematically resolve LAMG's grid-aligned-anisotropy convergence failure (asymptotic convergence factor $\approx0.99\!\to\!0.11$), with both refinements triggering locally and imposing negligible overhead. Code and benchmark scripts: \url{https://github.com/orenlivne/lamgplus}.
 \end{abstract}
 
 \begin{keywords}
@@ -56,8 +56,8 @@ L\phi=b,\qquad \mathbf 1^{\top}\phi=0,\qquad \mathbf 1^{\top}b=0 .
 \end{equation}
 Typically $m\ll n^2$ and $L$ is sparse. Our goal is an iterative solver for
 \eqref{eq:sys} that uses $\Om$ storage and $\mathcal{O}(m\log(1/\varepsilon))$ operations
-for an $\varepsilon$-accurate solution, with \emph{bounded hidden constants on the graphs
-that arise in applications}---hundreds, not millions. As in the original LAMG work
+for an $\varepsilon$-accurate solution, with bounded hidden constants on the graphs
+that arise in applications---hundreds, not millions. As in the original LAMG work
 \cite{lamg}, we target good \emph{empirical} wall-clock time performance over a diverse test set rather
 than provable worst-case complexity on adversarial graphs \cite{spielman-review}.
 
@@ -90,26 +90,30 @@ our strongest near-linear baselines (\S\ref{sec:compete}).
 operators from matrix entries alone. Classical AMG selects a coarse node subset; aggregation
 AMG \cite{vanek-mandel-brezina,notay} groups fine nodes into aggregates. AMG excels on
 discretized PDEs but its complexity is hard to control on general graphs: coarse operators
-densify on scale-free hubs, and higher-order interpolation makes this worse. A line of work
-targets graph Laplacians specifically: Napov and Notay's degree-aware rooted aggregation with
-aggregate-quality control \cite{napov-notay} (the closest algorithmic relative; discussed in \S\ref{sec:draqc}), matching-based multilevel preconditioners
-\cite{brannick-match}, and effective-resistance/diffusion-distance coarsening with
-least-squares interpolation from relaxed vectors \cite{lee2024}---the last closely related to
-LAMG's affinity. Bootstrap AMG \cite{brandt-bootstrap} and algebraic distance
-\cite{ron-safro-brandt} likewise learn the coarsening from relaxed test vectors, at higher setup
-cost; a recent direction learns the prolongation itself with graph neural networks
-\cite{learned-amg}. LAMG \cite{lamg}, by contrast, is parameter-free and training-free. Combinatorial
-Multigrid (CMG) \cite{cmg} also targets general topologies; CMG and LAMG had comparable average
-speed but LAMG was markedly more robust. General-purpose aggregation packages
-(PyAMG \cite{pyamg}, hypre/BoomerAMG \cite{boomeramg}) are tuned for PDE discretizations rather
-than the irregular degree distributions of graph Laplacians. In the broadest recent comparison
-\cite{gks2023}, CMG, BoomerAMG, and PETSc all failed to converge across the chimera and SDDM
-families, leaving the approximate-elimination solver AC (the \texttt{approxchol\_lap2} variant)
-the only blackbox method robust across all of them; the original MATLAB LAMG was reported
-non-convergent there, whereas our independent re-derivation converges on those families
-(\S\ref{sec:families})---a failure specific to that evaluation, not the algorithm. We thus consider
-approxChol as our sole robust near-linear baseline, with CHOLMOD for the
-direct-method crossover. We also compare with the other AMG solvers for the specific graph classes they converge on.
+densify on scale-free hubs, and higher-order interpolation makes this worse. Bootstrap AMG
+\cite{brandt-bootstrap} and algebraic distance \cite{ron-safro-brandt} learn the coarsening from
+relaxed test vectors, at higher setup cost; a recent direction learns the prolongation itself with
+graph neural networks \cite{learned-amg}. LAMG \cite{lamg}, by contrast, is parameter-free and
+training-free.
+
+Generic AMG for graph Laplacians has grown into an active, rapidly expanding line:
+Napov and Notay's degree-aware rooted aggregation with quality control \cite{napov-notay} (the
+closest algorithmic relative; discussed in \S\ref{sec:draqc}), matching-based multilevel
+preconditioners \cite{brannick-match}, effective-resistance/diffusion-distance coarsening with
+least-squares interpolation from relaxed vectors \cite{lee2024}, Combinatorial Multigrid (CMG)
+\cite{cmg}, and a growing body of surveys and applications spanning coarsening for machine
+learning \cite{chen-saad-coarsening}, renormalization of complex networks
+\cite{laplacian-coarsegrain}, and image-analysis solvers \cite{he-image-amg}. General-purpose
+packages (PyAMG \cite{pyamg}, hypre/BoomerAMG \cite{boomeramg}) are tuned for PDE
+discretizations rather than the irregular degree distributions of graph Laplacians. In the
+broadest recent comparison \cite{gks2023}, CMG, BoomerAMG, and PETSc all failed to converge
+across the chimera and SDDM families, leaving the approximate-elimination solver AC (the
+\texttt{approxchol\_lap2} variant) the only blackbox method robust across all of them; the
+original MATLAB LAMG was reported non-convergent there, whereas our independent re-derivation
+converges on those families (\S\ref{sec:families})---a failure specific to that evaluation, not
+the algorithm. We thus consider approxChol as our sole robust near-linear baseline, with CHOLMOD
+for the direct-method crossover. We also compare with the other AMG solvers for the specific
+graph classes they converge on.
 
 \subsection{Contribution}\label{sec:contrib}
 LAMG \cite{lamg} is an accelerated caliber-1 aggregation AMG that attains $\Om$ on general
@@ -129,24 +133,23 @@ $2.2\times$ over the robust AC variant on large graphs). The split is algorithmi
 (coarsening vs.\ fill), not a compiler artifact.
 \item \emph{Linear scaling at scale} (\S\ref{sec:scaling}). LAMG+ is empirically $\Om$ over
 $1{,}711$ SuiteSparse graphs---$100\%$ converged, median $4$ cycles, log--log slope $1.01$ up to $2.4\!\times\!10^8$ nonzeros (twice larger than LAMG's original demonstration) with no tuning.
-\item \emph{Robustness, closing LAMG's outlier tail} (\S\S\ref{sec:choices},\,\ref{sec:families}).
+\item \emph{Algebraic diagnosis and resolution of LAMG's outlier tail} (\S\S\ref{sec:choices},\,\ref{sec:families}).
 Where the original MATLAB LAMG was reported by \cite{gks2023} as non-convergent across the benchmark's
 test families, we run the \emph{unmodified} LAMG~2.2.1 on those families (regenerated from GKS's released code) with the benchmark's exact solver call and find it converges on every one, as does our
 re-derivation to the $10^{-8}$ tolerance (Table~\ref{tab:lamgorig})---placing the reported failure
 in the evaluation, not the algorithm.
-Additionally, two lean, \emph{local} refinements---a strength-of-connection veto and a selective caliber-2
-interpolation---turn LAMG's stalled
-grid-aligned-anisotropy rate (Asymptotic Convergence Factor $(\acf)\approx0.99$) into $\approx0.11$ at $\!1\%$ median
-overhead, each acting only on the locally anisotropic nodes that need it. 
+Additionally, by deploying a Local Fourier Analysis (Appendix~\ref{sec:aniso}), we prove that caliber-1 interpolation forces a strict energy leak on grid-aligned anisotropy. We resolve this with two lean, \emph{local} refinements---a strength-of-connection veto and a selective caliber-2
+interpolation---turning LAMG's stalled
+grid-aligned-anisotropy rate (Asymptotic Convergence Factor $(\acf)\approx0.99$) into $\approx0.11$ at $1\%$ median
+overhead, each acting only on the locally anisotropic nodes that need it.
 \item \emph{An ablation study of LAMG's load-bearing design choices} (\S\S\ref{sec:alg},\,\ref{sec:ablation}).
 Several of LAMG's setup choices---no aggregate-size cap, orphan nodes left as singleton seeds, a
-directional energy guard---are individually \emph{load-bearing} yet undocumented as essential; we
+directional energy guard---are individually load-bearing yet undocumented as essential; we
 isolate them and quantify, by single-choice ablation, that replacing any one by a plausible correlate
 silently destroys convergence on a whole graph class (web ACF $0.002\!\to\!0.97$, for one). Here
 reproduction \emph{is} discovery: knowing which heuristics carry the algorithm, and by how much, is
 what makes it transferable beyond the original implementation.
 \end{itemize}
-The open implementation makes all of the above reproducible; LAMG+ requires no parameter tuning.
 
 \section{The LAMG algorithm}\label{sec:alg}
 We summarize LAMG \cite{lamg} in enough detail to make this paper self-contained; the
@@ -157,7 +160,7 @@ $L\phi=b$ removes the high-residual (oscillatory) error in a few sweeps but stal
 \emph{algebraically smooth} error---the slow, low-energy modes. Multigrid corrects those
 on a coarser graph: it represents the fine smooth error $e\approx Pe^c$ by interpolation
 $P\in\R^{n\times n_c}$ from a coarse vector $e^c$, solves the Galerkin coarse system
-$L^c e^c=P^{\top}(b-L\tilde\phi)$ with $L^c=P^{\top}LP$ and $\tilde\phi$ the approximation to $\phi$ after relaxation, and corrects
+$L^c e^c=P^{\top}(b-L\tilde\phi)$ with $L^c=P^{\top}LP$ and $\tilde\phi$ the approximation to $\phi$ post-relaxation, and corrects
 $\tilde\phi\leftarrow\tilde\phi+Pe^c$. Applied recursively over $\ell=1,\dots,L$ levels
 this is a multigrid cycle; the work is geometric in the coarsening ratio and therefore typically linear in $m$.
 LAMG uses two coarsening operators---elimination and aggregation---alternated until the
@@ -204,12 +207,11 @@ relaxed (GS-optimal) energy $\min_y E_u=E_u(x;B_u/L_{uu})$. Their ratio is the f
 which lumping $u$ into $s$'s aggregate inflates the local energy; capping it bounds the
 coarse-operator energy aggregate by aggregate, hence the two-level factor
 $\rho\lesssim 1-1/Q$ \cite[\S3.4]{lamg}. Crucially the guard regulates \emph{energy, not
-size}---there is \emph{no} hard aggregate-size cap: the same $Q$ admits a $100$-node hub
+size}---there is no hard aggregate-size cap: the same $Q$ admits a $100$-node hub
 aggregate (neighbors agree on the slow modes, $q\approx1$) yet forbids a $3$-node mesh
 aggregate (neighbors disagree, $q$ shoots up). Two companion conventions complete the rule
-and are equally load-bearing: a node that finds no admissible seed stays a singleton seed (an
-\emph{orphan}), never force-absorbed; and the guard is \emph{directional}---\eqref{eq:guard}
-scores $u$ forced onto seed $s$, $q_{u\leftarrow s}$, and is not symmetrized in $(u,s)$. These
+and are equally load-bearing: a node that finds no admissible seed stays a singleton aggregate;
+and the guard is \emph{directional}---\eqref{eq:guard} scores $u$ forced onto seed $s$, $q_{u\leftarrow s}$, and is not symmetrized in $(u,s)$. These
 are LAMG's choices \cite[\S3.4]{lamg}; substituting a plausible correlate for any of them (a
 size cap, forced absorption, a symmetric guard) silently over- or under-coarsens some graph
 class, so \S\ref{sec:choices} discusses where LAMG+ deviates from LAMG. The guard
@@ -234,7 +236,7 @@ $\tilde\phi\leftarrow \tilde\phi+E\alpha$. A level's history accumulates across 
 revisits; the finest persists across cycles.
 
 \section{Two refinements beyond LAMG}\label{sec:choices}
-Reproducing LAMG (\S\ref{sec:alg})---no size cap, orphan singletons, a directional guard, the
+Reproducing LAMG (\S\ref{sec:alg})---no size cap, singleton nodes, a directional guard, the
 cycle-index calibration---is a prerequisite, not a contribution. LAMG+ departs
 from LAMG (Table~\ref{tab:diff}) by (1)~avoiding aggregation across a weak edge, via a
 strength-of-connection veto (\S\ref{sec:soc}), and (2)~judiciously raising the interpolation caliber
@@ -251,7 +253,7 @@ stages (which nodes aggregate, how they interpolate), they are independent and i
 ablatable (\S\ref{sec:ablation}).
 
 \begin{table}[h!]\centering
-\caption{The two places LAMG+ departs from LAMG, both targeting grid-aligned anisotropy. Reproduced setup choices (no size cap, orphan singletons, directional guard,
+\caption{The two places LAMG+ departs from LAMG, both targeting grid-aligned anisotropy. Reproduced setup choices (no size cap, singletons, directional guard,
 non-decaying $\gamma$, fixed $K{=}4$) are discussed in \S\S\ref{sec:alg},\,\ref{sec:calib}.}\label{tab:diff}
 \begin{tabular}{>{\raggedright\arraybackslash}p{2.1cm}
                 >{\raggedright\arraybackslash}p{2.4cm}
@@ -274,11 +276,11 @@ Affinity \eqref{eq:aff} ranks a node's neighbors by how well their relaxed test-
 profiles align, and aggregation merges a node with its highest-affinity admissible neighbor.
 On a strongly grid-aligned anisotropic grid the test vectors are nearly flat along the weak
 direction, so the $K$-sample affinity of a weak (weight-$\epsilon$) edge is computed from
-almost-identical profiles and can, on an unlucky sample, \emph{exceed} that of the genuinely
+almost-identical profiles and can, on an unlucky sample, exceed that of the genuinely
 strong (weight-$1$) edge---we measure $0.97$ versus $0.89$ at one interior node of a $256^2$,
 $\epsilon=10^{-4}$ grid. Neither the affinity nor the energy guard $Q$ catches this: both are
-computed from the \emph{same} test vectors and are fooled identically. The \emph{matrix} is
-not---the conductance ratio there is $10^4$. A single such inversion creates one
+computed from the \emph{same} test vectors and are fooled identically. Fortunately, the matrix is
+not in this case---the conductance ratio there is $10^4$. A single such inversion creates one
 cross-weak-direction merge, a localised residual hot-spot (peak-to-mean $>10^3$), and a stalled
 rate ($\acf\approx0.99$) that no amount of $\gamma$ or recombination repairs, and that
 caliber-2 alone cannot reach past either.
@@ -304,10 +306,15 @@ The veto fixes \emph{which} nodes aggregate; caliber-2 changes \emph{how} they
 interpolate---the place LAMG's strict caliber-1 design leaves a bounded but non-textbook
 rate. On grid-aligned anisotropy the affinity correctly semicoarsens along the strong direction
 (the aggregates are well placed), but the caliber-1 piecewise-constant interpolation across each
-$2{:}1$ aggregate recovers only half of the smooth-in-strong mode's amplitude, inflating the energy ratio to
-$q\approx2$ and pinning the two-level factor at $\rho\approx0.5$ (App.~\ref{sec:aniso}). Where a
-fine node's \emph{strong} edges (i.e., those not vetoed by~\eqref{eq:soc}) reach exactly two coarse aggregates---a locally one-dimensional
-neighborhood---LAMG+ adds a second, caliber-2 parent with a single fitted weight $w$
+$2{:}1$ aggregate suffers a structural order deficit. As proven by the Local Fourier Analysis
+in Appendix~\ref{sec:aniso}, caliber-1 commits exactly half of every interpolant's energy to
+the unresolved high-frequency harmonic ($\beta_{c1}=1/2$), inflating the energy ratio to
+$q\approx2$ and pinning the two-level factor at $\rho\approx0.5$. By raising the interpolation
+to caliber-2 exclusively where a fine node's strong edges (i.e., those not vetoed
+by~\eqref{eq:soc}) reach exactly two coarse aggregates, the symbol's dependence on the smooth
+mode shifts from
+$O(\theta_x)$ to $O(\theta_x^2)$, mathematically closing the energy leak ($\beta_{c2}\to1$).
+LAMG+ implements this by adding a second, caliber-2 parent with a single fitted weight $w$
 (App.~\ref{sec:aniso} derives it). Measured per level with an exact coarse solve (so the
 $\gamma$ schedule cannot mask it), the two-level factor on the $256^2$, $\epsilon=10^{-4}$ grid
 falls from $0.46$ (caliber-1, veto on) to $0.28$ at every aggregation level; with $\gamma$ and
@@ -462,14 +469,14 @@ pwtk             & structural & 5.7\,M  & \textbf{0.11} & 0.21 & 0.40\\
 
 The finding is a clean \emph{class split}, not a single winner (Table~\ref{tab:compete}), but at root it is one
 mechanism---a \emph{fill contest}. These graphs all converge in only $3$--$4$ cycles, so neither
-solver is paced by iteration count; the winner is whichever builds the \emph{leaner hierarchy},
+solver is paced by iteration count; the winner is whichever builds the leaner hierarchy,
 because the fill a solver creates sets both its setup cost and the cost of every cycle. Aggregation
-and sampled elimination have \emph{opposite} fill profiles. On low-diameter social, web, and citation
+and sampled elimination have opposite fill profiles. On low-diameter social, web, and citation
 graphs and on the planar road network, approxChol wins: their low mean degree keeps its sampled
 elimination cheap, while the absence of clean separators inflates LAMG+'s coarse operators---and with
 them the cost of every cycle. On finite-element and structural matrices the profiles reverse---the high per-node
 coupling makes elimination fill in, while LAMG+'s aggregation collapses those dense neighborhoods at
-$\Oone$ cost on a cleanly separating mesh---and so does the order: \textbf{LAMG+ is the fastest of the three} (geometric-mean
+$\Oone$ cost on a cleanly separating mesh---and so does the order: LAMG+ is the fastest of the three (geometric-mean
 $1.76\times$ over approxChol across the $34$ FE/structural graphs, winning $91\%$ of them;
 \texttt{bmwcra\_1}, \texttt{crankseg\_1}, \texttt{troll}, \texttt{pwtk} run $1.9$--$3.5\times$ over
 it), the leanest build of the three, and the fixed cheap $K{=}4$ calibration (\S\ref{sec:calib})
@@ -559,20 +566,17 @@ Over the full SuiteSparse corpus of \S\ref{sec:scaling}, built once and solved t
 tightest tail---at most $27$ cycles, versus $77$ PCG iterations for approxChol, whose single
 non-convergence is a chemical-process matrix (Table~\ref{tab:draqc}).
 
+\paragraph{Availability of competing implementations}
 The graph-Laplacian solver most closely related to LAMG is the degree-aware rooted aggregation with
 quality control (DRA-QC) of Napov and Notay \cite{napov-notay}: like LAMG it eliminates low-degree
 vertices and coarsens by aggregation, but it controls aggregate quality through a provable two-grid
-condition-number bound rather than an energy guard, and is reported $2$--$5\times$ faster than the
-original LAMG on a large real-world test set \cite{napov-notay}.
-
-\paragraph{Availability of competing implementations}
-The two most closely related aggregation solvers are not openly available. AGMG \cite{notay}---the
+condition-number bound rather than an energy guard, and is reported $2$--$5\times$ faster on average
+than the original LAMG on a real-world test set \cite{napov-notay}. AGMG \cite{notay}---the
 general-purpose quality-control aggregation code---is distributed under a restrictive academic
-licence, which we requested and were unable to obtain as a non-academic user; its degree-aware graph
-variant DRA-QC is not part of any public distribution. We reimplemented DRA-QC faithfully from
-\cite{napov-notay} during this study, but we deliberately omit head-to-head timings against
-it: a third-party reimplementation cannot fairly represent the authors' tuned code, and a comparison
-against our own version would be neither reliable nor fair to them. We therefore benchmark
+licence, which we requested and were unable to obtain as a non-academic user; its DRA-QC variant is
+not part of any public distribution and is covered by the same license terms. The other close relative---Lee's diffusion-distance/effective-resistance
+affinity coarsening \cite{lee2024}, in spirit nearest to LAMG's relaxed-vector affinity---is likewise
+not distributed in any public implementation. We therefore benchmark
 quantitatively only against the publicly available approxChol \cite{laplacians,gks2023}---the
 dominant practical near-linear solver.
 
@@ -654,8 +658,8 @@ median of $4$ cycles. The original MATLAB LAMG was reported non-convergent on al
 setup, and MEX kernels unchanged), with \cite{gks2023}'s exact solver call
 (\texttt{setup(`laplacian',$\cdot$)}, \texttt{errorReductionTol}$=10^{-8}$, default cycle cap)---on the
 same families converges on every one (Table~\ref{tab:lamgorig}), as does
-LAMG+, in as few or fewer cycles and to a strict $10^{-8}$ residual. The reported failure is therefore an artifact of the original evaluation, not the
-solver. (We could not reproduce the original evaluation's failure mechanism.)
+LAMG+, in as few or fewer cycles and to a strict $10^{-8}$ residual. This indicates that the reported failure was an evaluation artifact rather than an algorithmic
+property; we do not attempt to diagnose the specific cause within the original benchmark harness.
 
 % Table generated by scripts/gks_family_compare_table.jl (see doc/gks_compare_table.tex); regenerate, don't hand-edit.
 \begin{table}[t]\centering
@@ -746,7 +750,7 @@ reproduces (\S\S\ref{sec:alg},\,\ref{sec:calib}); bottom: the two anisotropy ref
 Choice & Stresses & Effect if wrong\\
 \midrule
 no size cap & scale-free / web / social & web $\acf\ 0.002\!\to\!0.97$ (dense fill, stall)\\
-orphan singletons & anisotropic FE & \texttt{bodyy5} diverges ($\to0.99$)\\
+singletons & anisotropic FE & \texttt{bodyy5} diverges ($\to0.99$)\\
 directional guard & structured & over-aggregation; rarely fatal alone\\
 \midrule
 strength-of-connection veto & grid-aligned anisotropy & rare affinity-inversion stall ($\to0.99$)\\
@@ -765,8 +769,9 @@ finite-element/structural matrices. Beyond the linear solver, the multilevel hie
 for related tasks such as eigenproblems \cite[\S6.4]{lamg} and nonlinear systems via the Full
 Approximation Scheme \cite[\S8.1]{guide}.
 
-\paragraph{Toward a parallel LAMG+} The results here are single-threaded; parallelization is the main
-direction left open. Both the setup and the cycle reduce to scalable sparse primitives---sparse
+\paragraph{On the feasibility of a parallel LAMG+} While the empirical results presented here are
+single-threaded, the lean algebraic modifications introduced preserve the theoretical concurrency
+bounds of the original solver. Both the setup and the cycle reduce to scalable sparse primitives---sparse
 matrix--vector products, maximal independent set, segmented reductions---already mapped to GPUs
 \cite{bell-dalton-olson} and scaled to $10^5$ cores \cite{baker-scaling,amgx}. The one inherently
 sequential kernel is the Gauss--Seidel smoother; the standard substitutes are polynomial smoothers
@@ -996,6 +1001,13 @@ Anal.\ \textbf{51}(3), 2013.
 \bibitem{lee2024} B.~Lee, \emph{Bringing physics into the coarse-grid selection: approximate
 diffusion-distance/effective-resistance measures for network analysis and algebraic multigrid for
 graph Laplacians}, Numer.\ Linear Algebra Appl.\ \textbf{31}(2), 2024.
+\bibitem{chen-saad-coarsening} J.~Chen, Y.~Saad, and Z.~Zhang, \emph{Graph coarsening: from
+scientific computing to machine learning}, SeMA J.\ \textbf{79}(1), 187--223, 2022.
+\bibitem{laplacian-coarsegrain} M.~de~C.~Loures, A.~A.~Piovesana, and J.~A.~Brum, \emph{Laplacian
+coarse graining in complex networks}, arXiv:2302.07093, 2023.
+\bibitem{he-image-amg} X.~He, \emph{An algebraic multigrid method for solving the Laplacian
+equations used in image analysis}, project report, Dept.\ of Information Technology, Uppsala
+University.
 \bibitem{brandt-bootstrap} A.~Brandt, J.~Brannick, K.~Kahl, and I.~Livshits, \emph{Bootstrap AMG},
 SIAM J.\ Sci.\ Comput.\ \textbf{33}(2), 2011.
 \bibitem{ron-safro-brandt} D.~Ron, I.~Safro, and A.~Brandt, \emph{Relaxation-based coarsening and

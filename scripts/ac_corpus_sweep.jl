@@ -1,6 +1,6 @@
 # approxChol (Kyng–Sachdeva / GKS) over the ENTIRE corpus, same conditions as the
-# DRA-QC sweep (build factor once, solve L x = b to 1e-8). Records convergence + PCG
-# iterations + times, so we can compare AC vs DRA-QC vs LAMG+ corpus-wide robustness.
+# LAMG+ sweep (build factor once, solve L x = b to 1e-8). Records convergence + PCG
+# iterations + times, so we can compare AC vs LAMG+ corpus-wide robustness.
 #   julia --project=examples/repro_env scripts/ac_corpus_sweep.jl [corpusdir] [out.csv] [maxnnz]
 using LAMG, LinearAlgebra, SparseArrays, Random, Printf, Statistics
 import Laplacians
