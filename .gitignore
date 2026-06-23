@@ -41,3 +41,4 @@ results/*.csv
 .ipynb_checkpoints/
 results/gks_cmp/
 *.thm
+.DS_Store
