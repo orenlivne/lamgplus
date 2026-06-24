@@ -133,10 +133,13 @@ cd doc && pdflatex lamg_plus.tex && pdflatex lamg_plus.tex
 
 ```bibtex
 @misc{lamgplus,
-  author = {Oren E. Livne},
-  title  = {LAMG+: A Lean Algebraic Multigrid Solver for Graph Laplacians},
-  year   = {2026},
-  note   = {https://github.com/orenlivne/lamgplus}
+  author        = {Oren E. Livne},
+  title         = {LAMG+: A Robust Lean Algebraic Multigrid Solver for Graph Laplacians},
+  year          = {2026},
+  eprint        = {2606.24791},
+  archivePrefix = {arXiv},
+  primaryClass  = {math.NA},
+  note          = {\url{https://arxiv.org/abs/2606.24791}}
 }
 ```
 LAMG+ builds on: O. E. Livne and A. Brandt, *Lean Algebraic Multigrid (LAMG): Fast Graph Laplacian
