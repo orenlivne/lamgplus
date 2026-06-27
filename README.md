@@ -15,6 +15,10 @@ the modern approximate-Cholesky solver. See [`doc/lamg_plus.tex`](doc/lamg_plus.
 
 <p align="center"><em>LAMG+'s parameter-free hierarchical coarsening of an airfoil mesh — each color is one aggregate; the graph coarsens ~4&times; per level (3,538 nodes &rarr; 58 over three levels).</em></p>
 
+<p align="center"><img src="doc/figures/coarsening_social.png" width="780" alt="LAMG+ hierarchical aggregation coarsening of a coauthorship social network"></p>
+
+<p align="center"><em>The same parameter-free coarsening on an irregular <strong>social</strong> graph (a coauthorship network) — no mesh, no coordinates; the aggregates follow the network's community structure (379 nodes &rarr; 26 over four levels).</em></p>
+
 <p align="center"><img src="doc/figures/scaling.png" width="720" alt="LAMG+ empirically linear-time scaling over the SuiteSparse corpus"></p>
 
 <p align="center"><em>Empirically linear-time: total solve wall-clock vs. nonzeros over the SuiteSparse corpus.</em></p>
