@@ -7,8 +7,13 @@ Lean Algebraic Multigrid (Livne & Brandt, *SIAM J. Sci. Comput.* 2012) with two 
 strength-of-connection veto and a selective caliber-2 interpolation — plus a head-to-head study against
 the modern approximate-Cholesky solver. See [`doc/lamg_plus.tex`](doc/lamg_plus.tex) for the paper.
 
-> This repository is the **linear** LAMG+ solver only. The nonlinear max-flow (FAMG) work is separate
-> and not included here.
+> This repository is the **linear** LAMG+ solver only. The nonlinear flow solver that uses it —
+> **[NLF](https://github.com/orenlivne/nlf)** (congestion / max-flow / min-delay routing) — lives in
+> its own repository.
+
+<p align="center"><img src="doc/figures/scaling.png" width="720" alt="LAMG+ empirically linear-time scaling over the SuiteSparse corpus"></p>
+
+<p align="center"><em>Empirically linear-time: total solve wall-clock vs. nonzeros over the SuiteSparse corpus.</em></p>
 
 ## Requirements
 
