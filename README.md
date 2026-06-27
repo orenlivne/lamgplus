@@ -11,6 +11,10 @@ the modern approximate-Cholesky solver. See [`doc/lamg_plus.tex`](doc/lamg_plus.
 > **[NLF](https://github.com/orenlivne/nlf)** (congestion / max-flow / min-delay routing) — lives in
 > its own repository.
 
+<p align="center"><img src="doc/figures/coarsening_airfoil.png" width="780" alt="LAMG+ hierarchical aggregation coarsening of an airfoil finite-element mesh"></p>
+
+<p align="center"><em>LAMG+'s parameter-free hierarchical coarsening of an airfoil mesh — each color is one aggregate; the graph coarsens ~4&times; per level (3,538 nodes &rarr; 58 over three levels).</em></p>
+
 <p align="center"><img src="doc/figures/scaling.png" width="720" alt="LAMG+ empirically linear-time scaling over the SuiteSparse corpus"></p>
 
 <p align="center"><em>Empirically linear-time: total solve wall-clock vs. nonzeros over the SuiteSparse corpus.</em></p>
