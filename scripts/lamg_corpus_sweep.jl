@@ -4,7 +4,7 @@
 #   julia --project=examples/repro_env scripts/lamg_corpus_sweep.jl [corpusdir] [out.csv] [maxnnz]
 using LAMG, LinearAlgebra, SparseArrays, Random, Printf, Statistics
 include(joinpath(@__DIR__, "work_per_edge.jl"))   # lamg_work, read_mm_adj, lcc (driver guarded)
-corpus = length(ARGS)>=1 ? ARGS[1] : "/Users/oren/code/mg/maxflow/LAMG.jl/data"
+corpus = length(ARGS)>=1 ? ARGS[1] : joinpath(get(ENV, "AIER_DATA", joinpath(homedir(), "code", "aier", "data")), "suitesparse")
 outcsv = length(ARGS)>=2 ? ARGS[2] : joinpath(@__DIR__,"..","results","lamg_corpus.csv")
 maxnnz = length(ARGS)>=3 ? parse(Int,ARGS[3]) : 10_000_000
 minm=1000; tol=1e-8; mkpath(dirname(outcsv))

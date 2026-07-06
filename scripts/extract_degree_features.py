@@ -1,7 +1,7 @@
 import csv, os, time
 import numpy as np, scipy.io, scipy.sparse as sp
-CSV="/Users/oren/code/mg/maxflow/LAMG.jl/doc/paper_program/results/full_tol_sweep_new.csv"
-DATA="/Users/oren/code/mg/maxflow/LAMG.jl/data"
+CSV="/Users/oren/code/old/maxflow/LAMG.jl/doc/paper_program/results/full_tol_sweep_new.csv"
+DATA=os.path.join(os.path.expanduser(os.environ.get("AIER_DATA", "~/code/aier/data")), "suitesparse")
 rows=list(csv.DictReader(open(CSV)))
 out=open("/tmp/graph_features.csv","w",newline=""); W=None; t0=time.time()
 def dfeat(d):
