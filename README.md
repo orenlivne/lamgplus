@@ -104,6 +104,8 @@ uses the same code path as the full benchmark (loader, LCC reduction, fixed RHS,
 ```bash
 # one-time: lean reproduction environment (LAMG + Laplacians.jl only), from the repo root:
 julia --project=examples/repro_env -e 'using Pkg; Pkg.develop(path="."); Pkg.add("Laplacians"); Pkg.instantiate()'
+# the notebook's julia-1.12 kernel starts in examples/, so also instantiate that env (provides IJulia):
+julia --project=examples -e 'using Pkg; Pkg.instantiate()'
 # place the four .mtx in data/ (or point $LAMGPLUS_DATA at your SuiteSparse cache):
 #   SNAP__web-Stanford, SNAP__web-Google, GHS_psdef__bmwcra_1, Boeing__pwtk
 cd examples && jupyter nbconvert --to notebook --execute --inplace \
