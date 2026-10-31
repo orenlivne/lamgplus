@@ -1,0 +1,13 @@
+name,orig_cycles,orig_relres,orig_success,orig_acf
+chimera,11,2.949092e-09,1,0.154716
+uni_chimera,12,4.664241e-09,1,0.177581
+wted_chimera,11,1.803257e-08,1,0.171757
+sddm_chimera,11,7.947498e-09,1,0.168927
+star,4,4.611032e-08,1,0.002446
+grid2_uniform,14,2.586055e-09,1,0.239196
+grid2_aniso,21,2.169239e-07,1,0.477745
+grid2_hicon,12,9.435170e-08,1,0.222917
+grid3_uniform,5,3.577777e-04,1,0.175865
+grid3_aniso,20,6.624902e-09,1,0.386327
+grid3_hicon,12,1.433619e-06,1,0.285042
+spe10,11,4.215759e-05,1,0.202178
