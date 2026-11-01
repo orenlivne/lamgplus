@@ -43,6 +43,45 @@ coarse levels, with neutral ACF and 0–25% extra solve time. Must be corrected 
 - Rotated anisotropy remains open (LAMG 2012 §5.2 Table 5.3). A 45°-diagonal anisotropic grid: caliber-2 helps
   (ACF 0.37 → 0.20) but does not reach the aligned-case 0.11. State this boundary.
 
+### 1b. Why caliber-2 only on locally one-dimensional nodes (and not everywhere)
+
+The referee's "a fix for one PDE family" invites the follow-up "why not raise the caliber everywhere?". The
+answer has four parts, three of which are already measured:
+
+1. **The ceiling is strict only on chains.** Brandt 1986 Ex. 4.2 / LAMG 2012 §3.4.3 (ρ ≈ 1 − 1/q): piecewise-
+   constant interpolation across a 2:1 *semicoarsened* pair puts half the interpolant's energy into the
+   unresolved harmonic, q → 2, ρ → 1/2, and no amount of smoothing or level-count removes it (Guide §6.2 eq. 6.1
+   turns it into the 0.99 we observed). That geometry — every strong edge of a node lying along a single line,
+   so the aggregate has exactly two coarse neighbours — is what grid-aligned anisotropy produces. On isotropic
+   2-D/3-D graphs aggregates are small clusters with several coarse neighbours, smooth error varies in all
+   directions, and caliber-1 LAMG already converges at ACF 0.01–0.02 (§2b table: iso grid 0.015 vs 0.016,
+   roadNet-PA 0.015 vs 0.021, delaunay_n17 0.018 vs 0.019, thermal1 0.020 vs 0.021 with vs without). There is
+   nothing to fix there, and the §2b ablation *is* the "why not everywhere" experiment: caliber-2 off-target is
+   ACF-neutral and costs 0–25% solve time. Caliber-1 remains the right default off the chains.
+2. **Caliber-2 with one fitted weight is linear interpolation along a line.** It is the correct interpolant
+   exactly when the strong-connection neighbourhood is one-dimensional. On a node with 3–6 coarse neighbours
+   "pick two parents" is arbitrary; the principled upgrade there is caliber 3–4 (a plane) with LS weights for
+   *all* nodes — LAMG 2012 §3.3.4 / Bootstrap AMG — whose cost is Galerkin coarse-operator fill growing with the
+   caliber, i.e. the operator complexity that LAMG 2012 §3.4 deliberately avoided by choosing caliber-1 plus
+   energy correction. Verify the §3.4 citation against the text before quoting it. Raising caliber everywhere
+   trades LAMG's sparse coarse operators (its structural advantage over classical AMG, cf. the BoomerAMG
+   complexities in §5) for a rate gain that §2b shows does not exist off the chains.
+3. **The gate is local, not a problem-class switch.** LAMG+ never detects "anisotropy"; it tests whether a fine
+   node's non-vetoed strong edges reach exactly two coarse aggregates. That is why it also fires on 10–20% of
+   rows on roads and meshes (§2b) — those are genuinely locally 1-D pockets (road chains, thin mesh strips) —
+   and why it rescued `thermomech`/`thermal`, `epb3`, `darcy`, `NACA0015` from SuiteSparse without anyone
+   labelling them anisotropic. Grid-aligned anisotropy is the canonical and worst instance of the class the gate
+   targets, not the class itself.
+4. **Known boundary.** Rotated anisotropy (LAMG 2012 §5.2 Table 5.3) is not fully covered: on the 45°-diagonal
+   grid the gate helps (0.37 → 0.20) but does not reach the aligned-case 0.11, because the strong chain is not a
+   path of exactly-two-coarse-neighbour aggregates after affinity aggregation. State this as open.
+
+Revision wording: replace "exclusively on grid-aligned anisotropy" everywhere with "on locally one-dimensional
+strong-connection neighbourhoods, of which grid-aligned anisotropy is the canonical and worst case", replace
+"inert (≈0%)" with "harmless (ACF-neutral, ≤25% time) where it fires off-target", and add the §2b ablation
+table as the "why not everywhere" evidence. This also answers the novelty charge from the other side: the fix
+is scoped to exactly where the theory says the caliber-1 ceiling is strict, and nowhere else.
+
 ## 2. Affinity vs SOC — K-sweep and seed variance (`ksweep.log`)
 
 256² grid, ε = 1e-4, caliber-2 on, three seeds each:
