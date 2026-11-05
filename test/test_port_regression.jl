@@ -169,11 +169,19 @@ acf(info) = (t = info.conv_factors[max(end - 4, 1):end];
     @testset "strength-of-connection veto fixes anisotropic outliers" begin
         L = aniso_grid(256; wh = 1.0, wv = 1e-4); n = size(L, 1)
         rng = MersenneTwister(1); xt = randn(rng, n); xt .-= sum(xt) / n; b = L * xt
-        # default (soc_τ = 0.05) converges; soc_τ = 0 stalls on this size/seed.
+        # default (soc_τ = 0.05) converges; soc_τ = 0 stalls on this size/seed. The stall is
+        # measured with the test-vector escalation OFF: with it on, the slow solve triggers a
+        # rebuild with 8 inherited TVs, which removes the affinity inversion by itself (the
+        # inversion is a K=4 sampling artefact). The veto is the guardrail that avoids that rebuild.
         _, i_on  = solve(L, b; options = LAMGOptions(tol = 1e-9, max_cycles = 80))
-        _, i_off = solve(L, b; options = LAMGOptions(tol = 1e-9, max_cycles = 80, agg_soc_τ = 0.0))
-        @test acf(i_on)  < 0.30          # SoC veto on (default): healthy
-        @test acf(i_off) > 0.80          # SoC veto off: the documented stall it fixes
+        _, i_off = solve(L, b; options = LAMGOptions(tol = 1e-9, max_cycles = 80, agg_soc_τ = 0.0,
+                                                     escalate_tv = false))
+        @test acf(i_on)  < 0.30          # SoC veto on (default): healthy, no escalation
+        @test !i_on.tv_escalated
+        @test acf(i_off) > 0.80          # SoC veto off, no escalation: the documented stall
+        _, i_heal = solve(L, b; options = LAMGOptions(tol = 1e-9, max_cycles = 80, agg_soc_τ = 0.0))
+        @test i_heal.tv_escalated        # veto off + escalation: self-heals at the cost of a rebuild
+        @test acf(i_heal) < 0.30
         # no-op on an isotropic grid (no near-zero-conductance edges to veto):
         Li = grid2d_laplacian(96, 96); ni = size(Li, 1)
         r2 = MersenneTwister(2); yt = randn(r2, ni); yt .-= sum(yt) / ni; bi = Li * yt

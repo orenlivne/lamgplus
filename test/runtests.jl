@@ -29,4 +29,5 @@ using LAMG
     include("test_solve_equivalence.jl")
     include("test_solve_convergence.jl")
     include("test_preprocessing.jl")
+    include("test_tv_escalation.jl")
 end

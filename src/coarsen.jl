@@ -321,6 +321,7 @@ function aggregate(L::SparseMatrixCSC; ν::Int = 3, K::Int = 4,
                    hub_threshold::Real = 8.0,
                    soc_τ::Float64 = 0.0,
                    jaccard_priority::Bool = false,
+                   scan_by_affinity::Bool = false,
                    X_ext::Union{Nothing,AbstractMatrix} = nothing,
                    rng = Random.default_rng())
     n = size(L, 1)
@@ -449,8 +450,31 @@ function aggregate(L::SparseMatrixCSC; ν::Int = 3, K::Int = 4,
     #    (undecided node count as singletons + actual aggregates) and
     #    stop early if the target coarsening ratio is reached.
     target_n_aggs = ceil(Int, target_coarsening_ratio * n)
+    # Scan order. The reference (lamg-2.2.1 CoarseSetAffinityEnergy.aggregationStage) sorts the
+    # undecided nodes by DESCENDING max affinity to an open neighbour and processes the strongest
+    # connections first, so the greedy sweep does not depend on the node numbering. The natural
+    # 1:n scan (the port's original behaviour) interacts with the RCM reordering: consecutive
+    # nodes are BFS-layer neighbours, so aggregates grow along the layers. `scan_by_affinity`
+    # restores the reference order (recomputed per δ stage, O(n log n)).
+    cm = scan_by_affinity ? Vector{Float64}(undef, n) : Float64[]
+    order = scan_by_affinity ? Vector{Int}(undef, n) : Int[]
     for δ in δ_stages
-        @inbounds for u in 1:n
+        if scan_by_affinity
+            @inbounds for u in 1:n
+                best = -1.0
+                if seed_of[u] == 0
+                    for p in naff.ptr[u]:(naff.ptr[u+1]-1)
+                        v = naff.nbr[p]; c = naff.aff[p]
+                        is_open(v) || continue
+                        c > best && (best = c)
+                    end
+                end
+                cm[u] = best
+            end
+            sortperm!(order, cm; rev = true)
+        end
+        @inbounds for t in 1:n
+            u = scan_by_affinity ? order[t] : t
             seed_of[u] != 0 && continue
             best_v = 0; best_c = -1.0
             for p in naff.ptr[u]:(naff.ptr[u+1]-1)

@@ -139,6 +139,9 @@ Base.@kwdef struct LAMGOptions
     # (the exact Galerkin-fill predictor) rather than the highest (saturated)
     # affinity. One parameter-free change; default off → path unchanged.
     agg_jaccard_priority::Bool = false
+    # Scan undecided nodes in descending max-affinity order (the lamg-2.2.1 reference order) instead
+    # of node order. Makes the greedy aggregation independent of the node numbering (RCM reorder).
+    agg_scan_by_affinity::Bool = false
     cal2_τ::Float64 = 0.5                 # strength-of-connection threshold for
                                           # the locally-1D gate: an edge is
                                           # "strong" if |A_ij| ≥ τ·max(rowmax_i,
@@ -195,6 +198,39 @@ Base.@kwdef struct LAMGOptions
     # Solve
     tol::Float64 = 1e-8
     max_cycles::Int = 100
+    # ───── Adaptive test-vector escalation (robustness) ─────
+    # Aggregation from K=4 fresh random test vectors is a high-variance process: on a few graphs
+    # (web crawls, some Delaunay meshes) the first aggregation level is poor and the cycle crawls
+    # at a factor 0.4–0.9, while a re-roll (seed, node order, K) of the same graph is fine. When
+    # the solve is persistently slow, rebuild the hierarchy with `escalate_tv_K` fresh relaxed test
+    # vectors INHERITED down the levels (coarse TVs = R·X plus `tv_increment` fresh ones, relaxed
+    # ν sweeps, as in lamg-2.2.1 `tvIncrement`/`tvMax`) and continue the solve from the current
+    # iterate. Healthy solves never pay for it. Measured 2026-11-01 (results/revision2026): the
+    # rebuild takes web-Stanford / delaunay_n18 / cnr-2000 / Kamvar-Stanford from homogeneous
+    # ACF 0.40 / 0.61 / 0.62 / 0.67 to 0.05 / 0.03 / 0.03 / 0.10. Bootstrapped TVs (vectors run
+    # through cycles of the slow hierarchy, Bootstrap-AMG style) were tried and are WORSE for the
+    # affinity (they collapse onto the few slowest modes and saturate the affinity), so the
+    # escalation uses locally relaxed vectors only. `escalate_tv=false` restores the previous
+    # restart-from-x0 γ-escalation.
+    escalate_tv::Bool = true
+    escalate_tv_K::Int = 8                # TVs for the rebuild (web crawls need > 4)
+    # Trigger (Brandt's accommodative-criterion style, Guide §6.2): the geometric mean of the last
+    # `escalate_tv_window` residual factors exceeds `escalate_tv_threshold`, from cycle 4 on. A
+    # sliding mean rather than two raw factors because per-cycle residual factors oscillate
+    # ~2× around the asymptotic rate (web-BerkStan: 0.34 0.27 0.45 0.35 0.47 ...). 0.3 is the
+    # paper's "no outlier" bar; at 0.5 graphs crawling at 0.37–0.48 went uncorrected.
+    escalate_tv_threshold::Float64 = 0.3
+    escalate_tv_window::Int = 3
+    escalate_tv_max::Int = 1              # rebuilds per solve
+    # Guard: the rebuilt hierarchy is kept only if, over the next `escalate_tv_window` cycles,
+    # its mean factor is not worse than `escalate_tv_guard_margin` × the pre-rebuild mean;
+    # otherwise the solve reverts to the original hierarchy (Guide §9.5–9.6 exchange-rate
+    # logic: pick the alternative with the better measured gain). Keeps a bad re-roll from
+    # ever making a solve slower than it was.
+    escalate_tv_guard::Bool = true
+    escalate_tv_guard_margin::Float64 = 1.1
+    tv_increment::Int = 1                 # fresh TVs added per aggregation level when inheriting
+    tv_max::Int = 10                      # cap on inherited TV count
     do_recomb::Bool = true
     history_size::Int = 4
 
@@ -225,7 +261,8 @@ Recursion stops when:
   (aggregation refused to make progress), OR
 - `options.max_levels` reached.
 """
-function setup(A::SparseMatrixCSC; options::LAMGOptions = LAMGOptions())
+function setup(A::SparseMatrixCSC; options::LAMGOptions = LAMGOptions(),
+               tv0::Union{Nothing,AbstractMatrix} = nothing)
     # Tolerance scales with size: 1e-10 is too strict for 1M-edge problems.
     laplacian_tol = max(1e-10, 1e-12 * size(A, 1))
     @assert is_laplacian(A; tol = laplacian_tol) "A must be symmetric with zero row sums"
@@ -247,13 +284,43 @@ function setup(A::SparseMatrixCSC; options::LAMGOptions = LAMGOptions())
             perm = p
         end
     end
-    n = size(A, 1)
+    # Finest-level test vectors supplied by the caller (escalation) are in the caller's ordering.
+    X0 = tv0 === nothing ? nothing :
+         (isempty(perm) ? Matrix{Float64}(tv0) : Matrix{Float64}(tv0)[perm, :])
+    mlh = _build_levels(A, options, rng, X0)
+    mlh.perm = perm
+    return mlh
+end
 
-    # Finest level.
+# Relax the columns of X by ν Gauss–Seidel sweeps on `L x = 0`, re-centre and normalize.
+function _relax_columns!(L::SparseMatrixCSC, X::Matrix{Float64}, ν::Int)
+    n = size(L, 1); rx = GaussSeidelRelaxer(L); b = zeros(n)
+    for k in 1:size(X, 2)
+        col = view(X, :, k)
+        for _ in 1:ν
+            relax!(rx, col, b; sweeps = 1)
+        end
+        col .-= sum(col) / n
+        nrm = norm(col); nrm > 0 && (col ./= nrm)
+    end
+    return X
+end
+
+"""
+    _build_levels(A, options, rng, X0) -> Multilevel
+
+Build the level hierarchy for the (already reordered) operator `A`. With `X0 === nothing` every
+aggregation level draws its own fresh relaxed random test vectors (the lean default — bit-identical
+to the previous behaviour). With `X0` (n × K finest-level TVs, e.g. from the escalation), the TVs are
+INHERITED down the hierarchy as in lamg-2.2.1: restricted through elimination stages, coarsened by
+`R` at aggregation levels, augmented by `tv_increment` fresh relaxed random vectors (up to `tv_max`),
+and relaxed `agg_ν` sweeps on the coarse operator before use.
+"""
+function _build_levels(A::SparseMatrixCSC, options::LAMGOptions, rng,
+                       X0::Union{Nothing,Matrix{Float64}})
     rx = GaussSeidelRelaxer(A; symmetric = true)
     mlh = Multilevel(create_finest_level(A, rx))
-    mlh.perm = perm
-
+    X = X0
     Acur = A
     iter = 0
     while size(mlh[end]) > options.min_coarse_size && iter < options.max_levels
@@ -262,18 +329,34 @@ function setup(A::SparseMatrixCSC; options::LAMGOptions = LAMGOptions())
         # this stage is essentially free in convergence terms (Schur is exact).
         new_lvl, stages, used_elim = _try_elimination(Acur, options)
         if used_elim
-            push!(mlh, create_elimination_level(new_lvl,
-                                                GaussSeidelRelaxer(new_lvl; symmetric = true),
-                                                stages))
+            lvl = create_elimination_level(new_lvl, GaussSeidelRelaxer(new_lvl; symmetric = true),
+                                           stages)
+            push!(mlh, lvl)
+            if X !== nothing
+                Xc = Matrix{Float64}(undef, size(new_lvl, 1), size(X, 2))
+                for k in 1:size(X, 2)
+                    Xc[:, k] = coarse_type(lvl, view(X, :, k))
+                end
+                X = _relax_columns!(new_lvl, Xc, options.agg_ν)
+            end
             Acur = new_lvl
             continue
         end
         # Otherwise aggregate. Stop if aggregation didn't make enough progress.
-        new_lvl, R, P, Q, used_agg = _try_aggregation(Acur, options, rng)
+        new_lvl, R, P, Q, used_agg = _try_aggregation(Acur, options, rng; X = X)
         used_agg || break
         push!(mlh, create_agg_level(new_lvl,
                                     GaussSeidelRelaxer(new_lvl; symmetric = true),
                                     R, P, Q))
+        if X !== nothing
+            nc = size(new_lvl, 1)
+            Xc = Matrix(R * X)
+            kadd = min(options.tv_increment, max(0, options.tv_max - size(Xc, 2)))
+            if kadd > 0
+                Xc = hcat(Xc, _relax_test_vectors(new_lvl, kadd, options.agg_ν, rng))
+            end
+            X = _relax_columns!(new_lvl, Xc, options.agg_ν)
+        end
         Acur = new_lvl
     end
 
@@ -281,6 +364,16 @@ function setup(A::SparseMatrixCSC; options::LAMGOptions = LAMGOptions())
     # the :elimination tag and the cycle would treat the level as AGG.
     # The "coarsest" level is just `mlh[end]`; no tag needed.
     return mlh
+end
+
+"""
+    _escalation_tvs(h, options, rng) -> X (n × escalate_tv_K, in the hierarchy's ordering)
+
+Fresh relaxed random zero-mean test vectors for the escalation rebuild — more of them than the lean
+default, so the affinity is reliable on graphs where K=4 was not.
+"""
+function _escalation_tvs(h::Multilevel, options::LAMGOptions, rng)
+    return _relax_test_vectors(finest_level(h).a, options.escalate_tv_K, options.agg_ν, rng)
 end
 
 function _try_elimination(A::SparseMatrixCSC, options::LAMGOptions)
@@ -345,7 +438,8 @@ function _build_gamma_vec(γ_fine::Float64, γ_coarse::Float64,
     return γs
 end
 
-function _try_aggregation(A::SparseMatrixCSC, options::LAMGOptions, rng)
+function _try_aggregation(A::SparseMatrixCSC, options::LAMGOptions, rng;
+                          X::Union{Nothing,Matrix{Float64}} = nothing)
     n = size(A, 1)
     # EXPERIMENTAL: structure-adaptive collapse coarsening (flag-gated).
     if options.collapse_flat
@@ -360,8 +454,11 @@ function _try_aggregation(A::SparseMatrixCSC, options::LAMGOptions, rng)
     end
     # Generate the affinity test vectors once; reuse them for the caliber-2 weight
     # fit (no extra setup cost) when the feature is enabled.
-    X = options.caliber2_1d ?
-        _relax_test_vectors(A, options.agg_K, options.agg_ν, rng) : nothing
+    # Inherited TVs (escalation path) take precedence; otherwise draw fresh ones here when caliber-2
+    # needs them (shared with the aggregation), else let `aggregate` draw its own (unchanged path).
+    if X === nothing && options.caliber2_1d
+        X = _relax_test_vectors(A, options.agg_K, options.agg_ν, rng)
+    end
     ag = aggregate(A;
                    ν = options.agg_ν, K = options.agg_K,
                    max_aggregate_size = options.agg_max_size,
@@ -371,6 +468,7 @@ function _try_aggregation(A::SparseMatrixCSC, options::LAMGOptions, rng)
                    hub_threshold = options.agg_hub_threshold,
                    soc_τ = options.agg_soc_τ,
                    jaccard_priority = options.agg_jaccard_priority,
+                   scan_by_affinity = options.agg_scan_by_affinity,
                    X_ext = X,
                    rng = rng)
     coarsening_ratio = ag.n_coarse / n
@@ -380,7 +478,7 @@ function _try_aggregation(A::SparseMatrixCSC, options::LAMGOptions, rng)
         return A, spzeros(0, 0), spzeros(0, 0), spzeros(0, 0), false
     end
     if options.caliber2_1d
-        P, R, Q, _ = caliber2_interpolation(ag.aggregate, X, A; τ = options.cal2_τ)
+        P, R, Q, _ = caliber2_interpolation(ag.aggregate, X::Matrix{Float64}, A; τ = options.cal2_τ)
     else
         P, R, Q = piecewise_constant_interpolation(ag.aggregate)
     end
@@ -449,33 +547,45 @@ function solve(h::Multilevel, b::AbstractVector;
                                        conv_factors = Float64[],
                                        final_residual = 0.0,
                                        solve_time = 0.0,
-                                       gamma_escalated = false))
+                                       gamma_escalated = false,
+                                       tv_escalated = false,
+                                       tv_reverted = false,
+                                       rebuilt_hierarchy = nothing))
     x = x0 === nothing ? zeros(Float64, n) : collect(Float64.(x0))
     x_init = copy(x)
 
     # Build a single processor we reuse across cycles — keeps the iterate
     # history across cycles at the finest level (Krylov-style acceleration).
-    proc = SolveCycleProcessor(h, b;
-                               ν_pre = options.ν_pre, ν_post = options.ν_post,
-                               ν_coarsest = options.ν_coarsest,
-                               do_recomb = options.do_recomb,
-                               recomb_above_elim = options.elim_sample_rho > 0,
-                               history_size = options.history_size,
-                               use_direct_coarsest = (options.ν_coarsest == -1),
-                               rhs_correction = options.rhs_correction)
     # Cycle-index vector: γ_fine at the finest, then γ_coarse * g^(l-2)
     # capped so work stays bounded.
     # Deep hierarchies (>= 18 levels: huge-diameter graphs) start directly on the grown
     # schedule -- the escalation of the cycle loop below would fire there anyway, and
     # starting grown removes its detection cost. No-op for typical (8-15 level) graphs.
-    g_growth = (options.γ_coarse_growth <= 1.0 && length(h) >= 18) ? 1.15 :
-               options.γ_coarse_growth
-    γ_vec = _build_gamma_vec(options.γ, options.γ_coarse, g_growth, length(h), h)
-    cyc = Cycle(proc, γ_vec, length(h))
+    function _cycle_for(hh, growth)
+        pr = SolveCycleProcessor(hh, b;
+                                 ν_pre = options.ν_pre, ν_post = options.ν_post,
+                                 ν_coarsest = options.ν_coarsest,
+                                 do_recomb = options.do_recomb,
+                                 recomb_above_elim = options.elim_sample_rho > 0,
+                                 history_size = options.history_size,
+                                 use_direct_coarsest = (options.ν_coarsest == -1),
+                                 rhs_correction = options.rhs_correction)
+        gv = _build_gamma_vec(options.γ, options.γ_coarse, growth, length(hh), hh)
+        return pr, Cycle(pr, gv, length(hh))
+    end
+    _default_growth(hh) = (options.γ_coarse_growth <= 1.0 && length(hh) >= 18) ? 1.15 :
+                          options.γ_coarse_growth
+    g_growth = _default_growth(h)
+    proc, cyc = _cycle_for(h, g_growth)
 
     residual_history = Float64[b_norm]
     conv_factors = Float64[]
     escalated = false
+    rebuilds = 0
+    reverted = false
+    w = max(options.escalate_tv_window, 1)
+    _tail_rate() = exp(sum(log, @view conv_factors[end-w+1:end]) / w)
+    h_orig = h; rate_before = NaN; k_rebuild = 0
     t_solve = @elapsed begin
         for k in 1:options.max_cycles
             # Seed state with current x as the cycle's initial guess.
@@ -485,31 +595,42 @@ function solve(h::Multilevel, b::AbstractVector;
             push!(residual_history, r)
             push!(conv_factors, r / residual_history[end - 1])
             r <= options.tol * b_norm && break
-            # Deep-hierarchy escalation: a persistently slow cycle (factor > 0.6 twice in a
-            # row) on the stock schedule signals an under-worked coarse hierarchy (very
-            # large-diameter graphs, e.g. country-scale road networks, whose s–t dipole rhs
-            # maximally excites the longest-wavelength mode). Regrow the cycle index by
-            # 1.15x per level and continue — the hierarchy itself is untouched, and healthy
-            # solves (factors well below 0.6) never trigger this.
-            if !escalated && k >= 4 && g_growth <= 1.0 &&
+            if options.escalate_tv && options.escalate_tv_guard && k_rebuild > 0 && !reverted &&
+               k == k_rebuild + w
+                # GUARD: the rebuilt hierarchy has had `w` cycles; keep it only if it beats the
+                # pre-rebuild rate (with margin), else go back to the original hierarchy with a
+                # fresh processor and continue from the current iterate.
+                if _tail_rate() > options.escalate_tv_guard_margin * rate_before
+                    h = h_orig
+                    g_growth = _default_growth(h)
+                    proc, cyc = _cycle_for(h, g_growth)
+                    reverted = true
+                end
+            elseif options.escalate_tv && rebuilds < options.escalate_tv_max && k >= max(4, w) &&
+               _tail_rate() > options.escalate_tv_threshold
+                # TEST-VECTOR ESCALATION: the hierarchy's aggregation is poor. Rebuild it with more
+                # fresh relaxed test vectors inherited down the levels, and CONTINUE from the current
+                # iterate (no restart; converged components are kept).
+                rate_before = _tail_rate(); k_rebuild = k
+                Xb = _escalation_tvs(h, options, MersenneTwister(options.seed + UInt(1 + rebuilds)))
+                hb = _build_levels(A, options, MersenneTwister(options.seed), Xb)
+                hb.perm = h.perm
+                h = hb
+                g_growth = _default_growth(h)
+                proc, cyc = _cycle_for(h, g_growth)
+                rebuilds += 1
+                escalated = true
+            elseif !options.escalate_tv && !escalated && k >= 4 && g_growth <= 1.0 &&
                conv_factors[end] > 0.6 && conv_factors[end-1] > 0.6
-                # ESCALATE BY RESTART: the slow phase leaves the error rotated into a
+                # ESCALATE BY RESTART (legacy path, escalate_tv=false): the slow phase leaves the error rotated into a
                 # subspace no allowed schedule contracts (a measured fact: a fresh grown-γ
                 # solve warm-started at this iterate also crawls at ~0.9, while the same
                 # solve from scratch runs at 0.02–0.06 to the FP floor). So restart from
                 # the initial guess under the grown schedule — the discarded progress is
                 # regained within a few grown cycles — with a fresh processor.
                 x = copy(x_init)
-                proc = SolveCycleProcessor(h, b;
-                                           ν_pre = options.ν_pre, ν_post = options.ν_post,
-                                           ν_coarsest = options.ν_coarsest,
-                                           do_recomb = options.do_recomb,
-                                           recomb_above_elim = options.elim_sample_rho > 0,
-                                           history_size = options.history_size,
-                                           use_direct_coarsest = (options.ν_coarsest == -1),
-                                           rhs_correction = options.rhs_correction)
-                γ_vec = _build_gamma_vec(options.γ, options.γ_coarse, 1.15, length(h), h)
-                cyc = Cycle(proc, γ_vec, length(h))
+                g_growth = 1.15
+                proc, cyc = _cycle_for(h, g_growth)
                 escalated = true
             end
         end
@@ -519,7 +640,10 @@ function solve(h::Multilevel, b::AbstractVector;
             conv_factors = conv_factors,
             final_residual = residual_history[end],
             solve_time = t_solve,
-            gamma_escalated = escalated)
+            gamma_escalated = escalated,
+            tv_escalated = rebuilds > 0,
+            tv_reverted = reverted,
+            rebuilt_hierarchy = (rebuilds > 0 && !reverted) ? h : nothing)
     if !isempty(p)
         xout = similar(x); xout[p] = x; x = xout   # un-permute to the caller's ordering
     end
